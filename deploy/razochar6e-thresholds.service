@@ -1,0 +1,12 @@
+[Unit]
+Description=razochar6e battery charge thresholds (20%-80% example)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+# Replace with your installed binary path after `cargo install --path .`
+ExecStart=/usr/local/bin/razochar6e set --start 20 --end 80
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

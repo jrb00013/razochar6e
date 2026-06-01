@@ -1,0 +1,7 @@
+# Example razochar6e config — copy to ~/.config/razochar6e/config.toml
+
+start = 20
+end = 80
+
+# Optional: force a backend (linux_sysfs, windows_asus, windows_wmi_asus, macos_cli)
+# backend = "linux_sysfs"

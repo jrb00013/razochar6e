@@ -1,0 +1,647 @@
+#compdef razochar6e
+
+autoload -U is-at-least
+
+_razochar6e() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_razochar6e_commands" \
+"*::: :->razochar6e" \
+&& ret=0
+    case $state in
+    (razochar6e)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-command-$line[1]:"
+        case $line[1] in
+            (probe)
+_arguments "${_arguments_options[@]}" : \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(apply)
+_arguments "${_arguments_options[@]}" : \
+'--backend=[]:BACKEND:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--start=[]:START:_default' \
+'--end=[]:END:_default' \
+'--backend=[]:BACKEND:_default' \
+'--save[Save values to config file]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'--backend=[]:BACKEND:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_razochar6e__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-config-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--start=[]:START:_default' \
+'--end=[]:END:_default' \
+'--backend=[]:BACKEND:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_razochar6e__subcmd__config__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-config-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(install-persist)
+_arguments "${_arguments_options[@]}" : \
+'--start=[]:START:_default' \
+'--end=[]:END:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(uninstall-persist)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':shell:(bash elvish fish power-shell zsh)' \
+&& ret=0
+;;
+(wsl)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_razochar6e__subcmd__wsl_commands" \
+"*::: :->wsl" \
+&& ret=0
+
+    case $state in
+    (wsl)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-wsl-command-$line[1]:"
+        case $line[1] in
+            (probe)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'--start=[]:START:_default' \
+'--end=[]:END:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_razochar6e__subcmd__wsl__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-wsl-help-command-$line[1]:"
+        case $line[1] in
+            (probe)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_razochar6e__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-help-command-$line[1]:"
+        case $line[1] in
+            (probe)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(apply)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_razochar6e__subcmd__help__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-help-config-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(install-persist)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(uninstall-persist)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(wsl)
+_arguments "${_arguments_options[@]}" : \
+":: :_razochar6e__subcmd__help__subcmd__wsl_commands" \
+"*::: :->wsl" \
+&& ret=0
+
+    case $state in
+    (wsl)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:razochar6e-help-wsl-command-$line[1]:"
+        case $line[1] in
+            (probe)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_razochar6e_commands] )) ||
+_razochar6e_commands() {
+    local commands; commands=(
+'probe:Detect OS, batteries, and available charge-limit backends' \
+'doctor:Run health checks (exit 1 if issues found)' \
+'apply:Apply thresholds from ~/.config/razochar6e/config.toml' \
+'set:Apply charge thresholds (requires root / Admin / supported hardware)' \
+'status:Show battery status and current thresholds when readable' \
+'clear:Reset to full charging (start=0, end=100)' \
+'config:Manage ~/.config/razochar6e/config.toml' \
+'install-persist:Install boot/login persistence for thresholds' \
+'uninstall-persist:Remove persistence unit/task' \
+'completions:Generate shell completions' \
+'wsl:WSL\: control Windows host battery via PowerShell bridge' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__apply_commands] )) ||
+_razochar6e__subcmd__apply_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e apply commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__clear_commands] )) ||
+_razochar6e__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e clear commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__completions_commands] )) ||
+_razochar6e__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e completions commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config_commands] )) ||
+_razochar6e__subcmd__config_commands() {
+    local commands; commands=(
+'init:Write default config.toml' \
+'show:Print config path and contents' \
+'set:Set start/end in config without applying to hardware' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e config commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__help_commands] )) ||
+_razochar6e__subcmd__config__subcmd__help_commands() {
+    local commands; commands=(
+'init:Write default config.toml' \
+'show:Print config path and contents' \
+'set:Set start/end in config without applying to hardware' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e config help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__help__subcmd__help_commands] )) ||
+_razochar6e__subcmd__config__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config help help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__help__subcmd__init_commands] )) ||
+_razochar6e__subcmd__config__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config help init commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__help__subcmd__set_commands] )) ||
+_razochar6e__subcmd__config__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config help set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__help__subcmd__show_commands] )) ||
+_razochar6e__subcmd__config__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config help show commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__init_commands] )) ||
+_razochar6e__subcmd__config__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config init commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__set_commands] )) ||
+_razochar6e__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__config__subcmd__show_commands] )) ||
+_razochar6e__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e config show commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__doctor_commands] )) ||
+_razochar6e__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e doctor commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help_commands] )) ||
+_razochar6e__subcmd__help_commands() {
+    local commands; commands=(
+'probe:Detect OS, batteries, and available charge-limit backends' \
+'doctor:Run health checks (exit 1 if issues found)' \
+'apply:Apply thresholds from ~/.config/razochar6e/config.toml' \
+'set:Apply charge thresholds (requires root / Admin / supported hardware)' \
+'status:Show battery status and current thresholds when readable' \
+'clear:Reset to full charging (start=0, end=100)' \
+'config:Manage ~/.config/razochar6e/config.toml' \
+'install-persist:Install boot/login persistence for thresholds' \
+'uninstall-persist:Remove persistence unit/task' \
+'completions:Generate shell completions' \
+'wsl:WSL\: control Windows host battery via PowerShell bridge' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__apply_commands] )) ||
+_razochar6e__subcmd__help__subcmd__apply_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help apply commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__clear_commands] )) ||
+_razochar6e__subcmd__help__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help clear commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__completions_commands] )) ||
+_razochar6e__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help completions commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__config_commands] )) ||
+_razochar6e__subcmd__help__subcmd__config_commands() {
+    local commands; commands=(
+'init:Write default config.toml' \
+'show:Print config path and contents' \
+'set:Set start/end in config without applying to hardware' \
+    )
+    _describe -t commands 'razochar6e help config commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__config__subcmd__init_commands] )) ||
+_razochar6e__subcmd__help__subcmd__config__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help config init commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__config__subcmd__set_commands] )) ||
+_razochar6e__subcmd__help__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help config set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__config__subcmd__show_commands] )) ||
+_razochar6e__subcmd__help__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help config show commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__doctor_commands] )) ||
+_razochar6e__subcmd__help__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help doctor commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__help_commands] )) ||
+_razochar6e__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__install-persist_commands] )) ||
+_razochar6e__subcmd__help__subcmd__install-persist_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help install-persist commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__probe_commands] )) ||
+_razochar6e__subcmd__help__subcmd__probe_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help probe commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__set_commands] )) ||
+_razochar6e__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__status_commands] )) ||
+_razochar6e__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help status commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__uninstall-persist_commands] )) ||
+_razochar6e__subcmd__help__subcmd__uninstall-persist_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help uninstall-persist commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__wsl_commands] )) ||
+_razochar6e__subcmd__help__subcmd__wsl_commands() {
+    local commands; commands=(
+'probe:' \
+'status:' \
+'set:' \
+    )
+    _describe -t commands 'razochar6e help wsl commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__wsl__subcmd__probe_commands] )) ||
+_razochar6e__subcmd__help__subcmd__wsl__subcmd__probe_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help wsl probe commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__wsl__subcmd__set_commands] )) ||
+_razochar6e__subcmd__help__subcmd__wsl__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help wsl set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__help__subcmd__wsl__subcmd__status_commands] )) ||
+_razochar6e__subcmd__help__subcmd__wsl__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e help wsl status commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__install-persist_commands] )) ||
+_razochar6e__subcmd__install-persist_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e install-persist commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__probe_commands] )) ||
+_razochar6e__subcmd__probe_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e probe commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__set_commands] )) ||
+_razochar6e__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__status_commands] )) ||
+_razochar6e__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e status commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__uninstall-persist_commands] )) ||
+_razochar6e__subcmd__uninstall-persist_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e uninstall-persist commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl_commands] )) ||
+_razochar6e__subcmd__wsl_commands() {
+    local commands; commands=(
+'probe:' \
+'status:' \
+'set:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e wsl commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__help_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__help_commands() {
+    local commands; commands=(
+'probe:' \
+'status:' \
+'set:' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'razochar6e wsl help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__help__subcmd__help_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl help help commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__help__subcmd__probe_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__help__subcmd__probe_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl help probe commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__help__subcmd__set_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl help set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__help__subcmd__status_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl help status commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__probe_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__probe_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl probe commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__set_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl set commands' commands "$@"
+}
+(( $+functions[_razochar6e__subcmd__wsl__subcmd__status_commands] )) ||
+_razochar6e__subcmd__wsl__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'razochar6e wsl status commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_razochar6e" ]; then
+    _razochar6e "$@"
+else
+    compdef _razochar6e razochar6e
+fi
