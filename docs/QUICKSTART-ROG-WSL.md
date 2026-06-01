@@ -17,10 +17,13 @@ This installs Rust/deps, builds `razochar6e`, elevates the Windows host install 
 ```powershell
 git clone https://github.com/jrb00013/razochar6e.git
 cd razochar6e
-.\setup.sh
-# or: .\scripts\install-windows.ps1 -Start 20 -End 80
+Set-ExecutionPolicy -Scope Process Bypass
+.\setup.ps1
+# or: .\setup.ps1 -Start 25 -End 85
 razochar6e probe
 ```
+
+See [QUICKSTART-WINDOWS.md](QUICKSTART-WINDOWS.md) for full native Windows usage.
 
 If `windows_asus` is available, limits are applied at the EC. Many ROG models only support **80% vs 100%** on Windows (not a true 20% start).
 

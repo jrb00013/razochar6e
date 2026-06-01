@@ -293,24 +293,16 @@ run_windows_setup() {
     die "PowerShell required on Windows"
   fi
 
-  if [[ "$FROM_SOURCE" -eq 0 ]]; then
-    log "Fast install: downloading prebuilt Windows binary..."
-    install_windows_host_prebuilt || die "Prebuilt Windows install failed"
-  else
-    install_rust
-    local ps1="$REPO_ROOT/scripts/install-windows.ps1"
-    log "Compiling on Windows (5–20 min first time — not frozen at step 49/61)..."
-    local ps_args=(-Start "$START" -End "$END")
-    [[ "$PERSIST" -eq 0 ]] && ps_args+=(-NoPersist)
-    [[ "$SKIP_BUILD" -eq 1 ]] && ps_args+=(-NoBuild)
-    "$ps_exe" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${ps_args[@]}"
-  fi
+  local ps1="$REPO_ROOT/setup.ps1"
+  [[ -f "$ps1" ]] || die "Missing setup.ps1 — git pull or clone the repo"
 
-  if [[ "$APPLY" -eq 1 ]]; then
-    local win_dest="${LOCALAPPDATA:-$HOME/AppData/Local}/Programs/razochar6e/razochar6e.exe"
-    [[ -f "$win_dest" ]] && "$win_dest" config init 2>/dev/null || true
-  fi
+  local ps_args=(-Start "$START" -End "$END")
+  [[ "$FROM_SOURCE" -eq 1 ]] && ps_args+=(-FromSource)
+  [[ "$APPLY" -eq 0 ]] && ps_args+=(-NoApply)
+  [[ "$PERSIST" -eq 0 ]] && ps_args+=(-NoPersist)
+  [[ "$SKIP_BUILD" -eq 1 ]] && ps_args+=(-SkipBuild)
 
+  "$ps_exe" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${ps_args[@]}"
   export PATH="${LOCALAPPDATA:-}/Programs/razochar6e:$PATH"
 }
 

@@ -19,7 +19,14 @@ Keeping a lithium pack pegged at 100% on AC ages it fast. Many machines expose *
 ```bash
 git clone https://github.com/jrb00013/razochar6e.git
 cd razochar6e
-./setup.sh
+./setup.sh          # Linux, WSL, macOS, Git Bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+.\setup.ps1
+.\setup.ps1 -Start 25 -End 85
 ```
 
 Or without cloning:
@@ -28,16 +35,20 @@ Or without cloning:
 curl -fsSL https://raw.githubusercontent.com/jrb00013/razochar6e/main/setup.sh | bash
 ```
 
-Options: `./setup.sh --help` · `--start 25 --end 85` · `--no-persist` · WSL: `--skip-host`
+```powershell
+irm https://raw.githubusercontent.com/jrb00013/razochar6e/main/setup.ps1 | iex
+```
+
+Options: `./setup.sh --help` · `.\setup.ps1 -Help` · `--start 25 --end 85` · WSL: `--skip-host`
 
 | Platform | What `setup.sh` does |
 |----------|----------------------|
 | **Linux** | apt/dnf/pacman deps, rustup, build, `sudo set` + persist if sysfs exists |
 | **WSL** | Same + elevated `install-windows.ps1` on host, then `wsl set` |
 | **macOS** | Xcode CLI check, rustup, build; optional `batt`/`battery`/`bclm` |
-| **Windows** | rustup, `install-windows.ps1`, scheduled task |
+| **Windows** | `setup.ps1` → prebuilt, config, elevated `set`, scheduled task |
 
-Manual: [docs/QUICKSTART-ROG-WSL.md](docs/QUICKSTART-ROG-WSL.md) · `scripts/install.sh` · `scripts/install-windows.ps1`
+Manual: [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md) · [docs/QUICKSTART-ROG-WSL.md](docs/QUICKSTART-ROG-WSL.md) · `scripts/install.sh` · `scripts/install-windows.ps1`
 
 ## Commands
 
@@ -101,6 +112,7 @@ See [docs/VENDORS.md](docs/VENDORS.md) for per-OEM notes.
 
 ## Docs
 
+- [Windows quick start](docs/QUICKSTART-WINDOWS.md)
 - [ASUS ROG + WSL quick start](docs/QUICKSTART-ROG-WSL.md)
 - [Vendor matrix](docs/VENDORS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)

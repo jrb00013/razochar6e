@@ -7,6 +7,8 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - `./setup.sh` — auto-detect platform (linux/wsl/macos/windows), install deps + Rust, build, configure
+- `./setup.ps1` — native Windows one-shot install (prebuilt, config, elevated set, persist, doctor)
+- [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md)
 - `install-windows.ps1` flags: `-NoPersist`, `-NoBuild`
 
 ## [0.2.4] - 2026-06-01
