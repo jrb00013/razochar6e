@@ -12,9 +12,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Find-Razochar6e {
+    $root = Split-Path $PSScriptRoot -Parent
     $candidates = @(
-        "$PSScriptRoot\..\target\release\razochar6e.exe",
-        "$PSScriptRoot\..\target\debug\razochar6e.exe",
+        "$root\target\release\razochar6e.exe",
+        "$root\target\debug\razochar6e.exe",
         "$env:LOCALAPPDATA\Programs\razochar6e\razochar6e.exe",
         "$env:ProgramFiles\razochar6e\razochar6e.exe"
     )

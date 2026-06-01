@@ -7,8 +7,6 @@ pub enum BackendKind {
     LinuxSysfs,
     #[cfg(windows)]
     WindowsAsus,
-    #[cfg(windows)]
-    WindowsWmiAsus,
     #[cfg(target_os = "macos")]
     MacOsCli,
     #[cfg(unix)]
@@ -21,8 +19,6 @@ impl BackendKind {
             Self::LinuxSysfs => "linux_sysfs",
             #[cfg(windows)]
             Self::WindowsAsus => "windows_asus",
-            #[cfg(windows)]
-            Self::WindowsWmiAsus => "windows_wmi_asus",
             #[cfg(target_os = "macos")]
             Self::MacOsCli => "macos_cli",
             #[cfg(unix)]
@@ -35,8 +31,6 @@ impl BackendKind {
             Self::LinuxSysfs => "Linux sysfs",
             #[cfg(windows)]
             Self::WindowsAsus => "Windows ASUS ATKACPI",
-            #[cfg(windows)]
-            Self::WindowsWmiAsus => "Windows ASUS WMI",
             #[cfg(target_os = "macos")]
             Self::MacOsCli => "macOS SMC CLI wrapper",
             #[cfg(unix)]
@@ -74,18 +68,6 @@ pub fn probe_all() -> Vec<BackendProbeResult> {
             detail,
             supports_start: false,
             supports_end: avail,
-        });
-        let (wmi_avail, wmi_detail) = super::windows_wmi::WindowsWmiAsusBackend::probe_detail();
-        out.push(BackendProbeResult {
-            kind: BackendKind::WindowsWmiAsus,
-            available: wmi_avail && !avail,
-            detail: if avail {
-                format!("skipped (ATKACPI preferred): {wmi_detail}")
-            } else {
-                wmi_detail
-            },
-            supports_start: false,
-            supports_end: wmi_avail,
         });
     }
 
@@ -129,9 +111,6 @@ pub fn select_best() -> Option<Box<dyn ChargeBackend>> {
         if let Some(b) = super::windows_asus::WindowsAsusBackend::open() {
             return Some(Box::new(b));
         }
-        if let Some(b) = super::windows_wmi::WindowsWmiAsusBackend::open() {
-            return Some(Box::new(b));
-        }
     }
 
     #[cfg(target_os = "macos")]
@@ -151,10 +130,6 @@ pub fn backend_by_id(id: &str) -> RazResult<Box<dyn ChargeBackend>> {
             .ok_or(RazError::NoBackend),
         #[cfg(windows)]
         "windows_asus" => super::windows_asus::WindowsAsusBackend::open()
-            .map(|b| Box::new(b) as Box<dyn ChargeBackend>)
-            .ok_or(RazError::NoBackend),
-        #[cfg(windows)]
-        "windows_wmi_asus" => super::windows_wmi::WindowsWmiAsusBackend::open()
             .map(|b| Box::new(b) as Box<dyn ChargeBackend>)
             .ok_or(RazError::NoBackend),
         #[cfg(target_os = "macos")]

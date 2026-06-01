@@ -7,9 +7,6 @@ pub mod macos_cli;
 #[cfg(windows)]
 pub mod windows_asus;
 
-#[cfg(windows)]
-pub mod windows_wmi;
-
 #[cfg(unix)]
 pub mod wsl_bridge;
 

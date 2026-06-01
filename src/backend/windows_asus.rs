@@ -1,29 +1,15 @@
-//! ASUS / ROG charge limit via ATKACPI DeviceIoControl (same path as Electrolite / MyASUS).
+//! ASUS / ROG on Windows — IOCTL (ATKACPI) with WMI fallback via PowerShell.
 
 use crate::backend::{ChargeBackend, Thresholds};
 use crate::error::{RazError, RazResult};
-use std::mem;
-use windows_sys::Win32::Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE};
-use windows_sys::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
-};
-use windows_sys::Win32::System::IO::DeviceIoControl;
-
-const DEVICE_PATH: &str = "\\\\.\\ATKACPI";
-const IOCTL_ASUS_BATTERY: u32 = 0x0022_240C;
-const ASUS_DEVICE_ID: u32 = 0x0012_0057;
-
-#[repr(C)]
-struct AsusChargeInput {
-    device_id: u32,
-    value: u32,
-}
+use std::path::PathBuf;
+use std::process::Command;
 
 pub struct WindowsAsusBackend;
 
 impl WindowsAsusBackend {
     pub fn open() -> Option<Self> {
-        if open_device().is_ok() {
+        if Self::probe_detail().0 {
             Some(Self)
         } else {
             None
@@ -31,82 +17,87 @@ impl WindowsAsusBackend {
     }
 
     pub fn probe_detail() -> (bool, String) {
-        match open_device() {
-            Ok(handle) => {
-                unsafe { CloseHandle(handle) };
-                (
-                    true,
-                    format!(
-                        "{DEVICE_PATH} IOCTL 0x{IOCTL_ASUS_BATTERY:08X} (end threshold; discrete % on many models)"
-                    ),
-                )
-            }
-            Err(_) => (
-                false,
-                format!("cannot open {DEVICE_PATH} (Admin + ASUS driver required)"),
-            ),
+        let script = script_path();
+        if !script.exists() {
+            return (false, format!("missing script: {}", script.display()));
+        }
+        let wmi_ok = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                "try { Get-CimClass -Namespace root/WMI -ClassName AsusAtkWmi_WMNB -EA Stop | Out-Null; exit 0 } catch { exit 1 }",
+            ])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        if wmi_ok {
+            (true, "ASUS WMI (AsusAtkWmi_WMNB) + ATKACPI script".into())
+        } else {
+            (
+                true,
+                format!(
+                    "{} present (ATKACPI may still work with Admin)",
+                    script.display()
+                ),
+            )
         }
     }
 
-    fn set_limit(percent: u8) -> RazResult<()> {
-        let handle = open_device().map_err(|msg| RazError::Backend {
-            backend: "windows_asus".into(),
-            message: msg,
-        })?;
-        let result = ioctl_set_limit(handle, percent);
-        unsafe { CloseHandle(handle) };
-        result
+    fn run_script(percent: u8) -> RazResult<()> {
+        let script = script_path();
+        let out = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                script.to_str().ok_or_else(|| RazError::Backend {
+                    backend: "windows_asus".into(),
+                    message: "non-UTF8 script path".into(),
+                })?,
+                "-Percent",
+                &percent.to_string(),
+            ])
+            .output()
+            .map_err(RazError::Io)?;
+        if !out.status.success() {
+            return Err(RazError::Backend {
+                backend: "windows_asus".into(),
+                message: format!(
+                    "asus-battery-limit.ps1 failed: {}",
+                    String::from_utf8_lossy(&out.stderr)
+                ),
+            });
+        }
+        Ok(())
     }
 }
 
-fn open_device() -> Result<HANDLE, String> {
-    let path: Vec<u16> = DEVICE_PATH
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect();
-    let handle = unsafe {
-        CreateFileW(
-            path.as_ptr(),
-            GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            std::ptr::null(),
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            0,
-        )
-    };
-    if handle == usize::MAX as HANDLE || handle == 0 {
-        Err(format!("CreateFileW failed for {DEVICE_PATH}"))
-    } else {
-        Ok(handle)
+fn script_path() -> PathBuf {
+    let name = "asus-battery-limit.ps1";
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            for candidate in [
+                dir.join("scripts").join(name),
+                dir.join(name),
+                dir.parent().map(|p| p.join("scripts").join(name)),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                if candidate.exists() {
+                    return candidate;
+                }
+            }
+        }
     }
-}
-
-fn ioctl_set_limit(handle: HANDLE, percent: u8) -> RazResult<()> {
-    let input = AsusChargeInput {
-        device_id: ASUS_DEVICE_ID,
-        value: u32::from(percent),
-    };
-    let mut bytes_returned = 0u32;
-    let ok = unsafe {
-        DeviceIoControl(
-            handle,
-            IOCTL_ASUS_BATTERY,
-            &input as *const _ as *const _,
-            mem::size_of::<AsusChargeInput>() as u32,
-            std::ptr::null_mut(),
-            0,
-            &mut bytes_returned,
-            std::ptr::null_mut(),
-        )
-    };
-    if ok == 0 {
-        return Err(RazError::Backend {
-            backend: "windows_asus".into(),
-            message: format!("DeviceIoControl failed for limit {percent}%"),
-        });
+    if let Ok(manifest) = std::env::var("CARGO_MANIFEST_DIR") {
+        let p = PathBuf::from(manifest).join("scripts").join(name);
+        if p.exists() {
+            return p;
+        }
     }
-    Ok(())
+    PathBuf::from("scripts").join(name)
 }
 
 impl ChargeBackend for WindowsAsusBackend {
@@ -115,18 +106,18 @@ impl ChargeBackend for WindowsAsusBackend {
     }
 
     fn name(&self) -> &'static str {
-        "Windows ASUS ATKACPI"
+        "Windows ASUS (PowerShell ATKACPI / WMI)"
     }
 
     fn set_thresholds(&self, t: Thresholds) -> RazResult<()> {
         t.validate()?;
         if t.start > 0 {
             eprintln!(
-                "note: windows_asus cannot set start threshold {}; only end {}% is sent to EC",
-                t.start, t.end
+                "note: windows_asus only sets end limit {}; start {} ignored on most models",
+                t.end, t.start
             );
         }
-        Self::set_limit(t.end)
+        Self::run_script(t.end)
     }
 
     fn get_thresholds(&self) -> RazResult<Option<Thresholds>> {

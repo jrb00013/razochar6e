@@ -31,7 +31,7 @@ ls /sys/class/power_supply/BAT*/charge_control_end_threshold
 
 | Vendor | Backend | Custom 20–80? |
 |--------|---------|----------------|
-| ASUS / ROG | `windows_asus`, `windows_wmi_asus` | End often yes; start usually firmware-only |
+| ASUS / ROG | `windows_asus` (PowerShell IOCTL + WMI) | End often yes; start usually firmware-only |
 | Lenovo | Not yet | Use Lenovo Vantage / conservation mode |
 | Dell | Not yet | Dell Power Manager / BIOS |
 | HP | Not yet | HP Command Center / BIOS |

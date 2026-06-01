@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.4] - 2026-06-01
+
+### Changed
+
+- Windows ASUS control via `scripts/asus-battery-limit.ps1` (IOCTL + WMI); no native Windows crate dep
+
 ## [0.2.3] - 2026-06-01
 
 ### Fixed

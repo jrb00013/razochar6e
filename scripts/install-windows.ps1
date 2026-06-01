@@ -15,6 +15,9 @@ $exe = Join-Path $repoRoot "target\release\razochar6e.exe"
 $destDir = "$env:LOCALAPPDATA\Programs\razochar6e"
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
 Copy-Item $exe (Join-Path $destDir "razochar6e.exe") -Force
+$scriptsDest = Join-Path $destDir "scripts"
+New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
+Copy-Item (Join-Path $repoRoot "scripts\*.ps1") $scriptsDest -Force
 
 & (Join-Path $destDir "razochar6e.exe") install-persist --start $Start --end $End
 Write-Host "Installed to $destDir"

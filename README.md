@@ -82,7 +82,6 @@ razochar6e apply
 |----|----------|--------------|------------|
 | `linux_sysfs` | Linux | Usually yes | Yes |
 | `windows_asus` | Windows ASUS/ROG | Often no | Yes (sometimes 80/100 only) |
-| `windows_wmi_asus` | Windows fallback | No | Yes |
 | `macos_cli` | macOS (`batt` / `battery` / `bclm`) | Varies | Varies |
 | `wsl_bridge` | WSL | Via host | Via host |
 
