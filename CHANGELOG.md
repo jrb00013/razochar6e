@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.6] - 2026-06-01
+
+### Added
+
+- `./setup.sh` — auto-detect platform (linux/wsl/macos/windows), install deps + Rust, build, configure
+- `install-windows.ps1` flags: `-NoPersist`, `-NoBuild`
+
 ## [0.2.4] - 2026-06-01
 
 ### Changed

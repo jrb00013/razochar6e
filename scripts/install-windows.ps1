@@ -1,15 +1,19 @@
 # Install razochar6e Windows binary and logon scheduled task (run as Administrator).
 param(
     [int]$Start = 20,
-    [int]$End = 80
+    [int]$End = 80,
+    [switch]$NoPersist,
+    [switch]$NoBuild
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path $PSScriptRoot -Parent
 
-Push-Location $repoRoot
-cargo build --release
-Pop-Location
+if (-not $NoBuild) {
+    Push-Location $repoRoot
+    cargo build --release
+    Pop-Location
+}
 
 $exe = Join-Path $repoRoot "target\release\razochar6e.exe"
 $destDir = "$env:LOCALAPPDATA\Programs\razochar6e"
@@ -19,6 +23,8 @@ $scriptsDest = Join-Path $destDir "scripts"
 New-Item -ItemType Directory -Force -Path $scriptsDest | Out-Null
 Copy-Item (Join-Path $repoRoot "scripts\*.ps1") $scriptsDest -Force
 
-& (Join-Path $destDir "razochar6e.exe") install-persist --start $Start --end $End
+if (-not $NoPersist) {
+    & (Join-Path $destDir "razochar6e.exe") install-persist --start $Start --end $End
+}
 Write-Host "Installed to $destDir"
 Write-Host "From WSL: razochar6e wsl set --start $Start --end $End"

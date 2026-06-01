@@ -14,33 +14,30 @@ Keeping a lithium pack pegged at 100% on AC ages it fast. Many machines expose *
 
 ## Quick start
 
-### Linux (native)
+**One command** — detects Linux / WSL / macOS / Windows, installs deps, builds, configures:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jrb00013/razochar6e/main/scripts/install.sh | bash -s -- --release
-sudo razochar6e probe
-sudo razochar6e set --start 20 --end 80 --save
-sudo razochar6e install-persist
-```
-
-### Windows (ASUS / ROG) — Admin PowerShell
-
-```powershell
 git clone https://github.com/jrb00013/razochar6e.git
 cd razochar6e
-.\scripts\install-windows.ps1 -Start 20 -End 80
-razochar6e probe
+./setup.sh
 ```
 
-### WSL → Windows host (your ROG setup)
+Or without cloning:
 
 ```bash
-# 1) Build & install on Windows (Admin) — see above
-# 2) From WSL:
-cargo install --path ~/projects/razochar6e
-razochar6e wsl probe
-razochar6e wsl set --start 20 --end 80
+curl -fsSL https://raw.githubusercontent.com/jrb00013/razochar6e/main/setup.sh | bash
 ```
+
+Options: `./setup.sh --help` · `--start 25 --end 85` · `--no-persist` · WSL: `--skip-host`
+
+| Platform | What `setup.sh` does |
+|----------|----------------------|
+| **Linux** | apt/dnf/pacman deps, rustup, build, `sudo set` + persist if sysfs exists |
+| **WSL** | Same + elevated `install-windows.ps1` on host, then `wsl set` |
+| **macOS** | Xcode CLI check, rustup, build; optional `batt`/`battery`/`bclm` |
+| **Windows** | rustup, `install-windows.ps1`, scheduled task |
+
+Manual: [docs/QUICKSTART-ROG-WSL.md](docs/QUICKSTART-ROG-WSL.md) · `scripts/install.sh` · `scripts/install-windows.ps1`
 
 ## Commands
 

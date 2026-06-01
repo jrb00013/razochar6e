@@ -2,12 +2,23 @@
 
 Your machine runs **Windows** for the real battery and **WSL** for development. `razochar6e` cannot control charging from Linux sysfs inside WSL (Hyper-V virtual battery only).
 
-## 1. Windows (once, Administrator)
+## Automated (recommended)
+
+From WSL in the repo:
+
+```bash
+./setup.sh
+```
+
+This installs Rust/deps, builds `razochar6e`, elevates the Windows host install (UAC), and runs `razochar6e wsl set --start 20 --end 80`.
+
+## 1. Windows only (Administrator)
 
 ```powershell
 git clone https://github.com/jrb00013/razochar6e.git
 cd razochar6e
-.\scripts\install-windows.ps1 -Start 20 -End 80
+.\setup.sh
+# or: .\scripts\install-windows.ps1 -Start 20 -End 80
 razochar6e probe
 ```
 
@@ -15,11 +26,11 @@ If `windows_asus` is available, limits are applied at the EC. Many ROG models on
 
 ## 2. WSL (daily use)
 
+After `./setup.sh`:
+
 ```bash
-cargo install --git https://github.com/jrb00013/razochar6e
-razochar6e wsl probe
+razochar6e wsl status
 razochar6e wsl set --start 20 --end 80
-razochar6e config init
 razochar6e doctor
 ```
 

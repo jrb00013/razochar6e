@@ -43,7 +43,7 @@ jobs:
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/razochar6e${{ matrix.ext }}" "dist/razochar6e${{ matrix.ext }}"
           cp README.md LICENSE CHANGELOG.md dist/
-          cp -r scripts deploy completions dist/
+          cp setup.sh scripts deploy completions dist/
           tar -czf "${ARCHIVE}" -C dist .
           echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
