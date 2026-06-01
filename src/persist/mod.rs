@@ -2,6 +2,7 @@ use crate::backend::Thresholds;
 use crate::error::RazResult;
 use std::fs;
 use std::io::Write;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::path::PathBuf;
 use std::process::Command;
 
