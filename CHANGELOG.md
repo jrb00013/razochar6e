@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.3] - 2026-06-01
+
+### Fixed
+
+- Windows ASUS backend uses `windows-sys`; unit struct (no `HANDLE` in trait object)
+- `WindowsAsusBackend::probe_detail` in registry
+
 ## [0.2.2] - 2026-06-01
 
 ### Fixed

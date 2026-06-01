@@ -67,7 +67,7 @@ pub fn probe_all() -> Vec<BackendProbeResult> {
 
     #[cfg(windows)]
     {
-        let (avail, detail) = super::windows_asus::probe_detail();
+        let (avail, detail) = super::windows_asus::WindowsAsusBackend::probe_detail();
         out.push(BackendProbeResult {
             kind: BackendKind::WindowsAsus,
             available: avail,
