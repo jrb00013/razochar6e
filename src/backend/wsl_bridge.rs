@@ -24,8 +24,17 @@ impl WslBridgeBackend {
 
     fn run_host(args: &[&str]) -> RazResult<String> {
         let script = find_host_script()?;
-        let mut cmd_args = vec!["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", &script];
-        cmd_args.extend(args);
+        // Pass subcommand + numeric args as script positional parameters (see razochar6e-host.ps1).
+        let mut cmd_args = vec![
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            script.as_str(),
+        ];
+        for a in args {
+            cmd_args.push(a.as_ref());
+        }
 
         let out = Command::new("powershell.exe")
             .args(&cmd_args)
@@ -57,6 +66,14 @@ fn find_host_script() -> RazResult<String> {
         let p = format!("{manifest}/{HOST_SCRIPT}");
         if std::path::Path::new(&p).exists() {
             return windows_path(&p);
+        }
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        let installed = format!(
+            "{home}/.local/share/razochar6e/scripts/razochar6e-host.ps1"
+        );
+        if std::path::Path::new(&installed).exists() {
+            return windows_path(&installed);
         }
     }
     for candidate in [

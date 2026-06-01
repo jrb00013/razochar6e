@@ -213,28 +213,40 @@ install_windows_host_prebuilt() {
   curl -fL --progress-bar "$url" -o "$tmpdir/win.tar.gz"
   tar -xzf "$tmpdir/win.tar.gz" -C "$tmpdir"
 
-  if have_cmd wslpath; then
-    win_tmp="$(wslpath -w "$tmpdir")"
-  else
+  if ! have_cmd wslpath; then
+    rm -rf "$tmpdir"
     return 1
   fi
 
+  local win_tmp win_repo win_persist
+  win_tmp="$(wslpath -w "$tmpdir")"
+  win_repo="$(wslpath -w "$REPO_ROOT")"
+  win_persist="$(wslpath -w "$REPO_ROOT/scripts/install-persist-admin.ps1")"
+
   "$ps_exe" -NoProfile -Command "
-    \$dest = \"\$env:LOCALAPPDATA\\Programs\\razochar6e\"
-    New-Item -ItemType Directory -Force -Path \$dest | Out-Null
-    Copy-Item '${win_tmp}\\razochar6e.exe' (Join-Path \$dest 'razochar6e.exe') -Force
-    New-Item -ItemType Directory -Force -Path (Join-Path \$dest 'scripts') | Out-Null
-    Copy-Item '${win_tmp}\\scripts\\*' (Join-Path \$dest 'scripts') -Force -ErrorAction SilentlyContinue
+    \$dest = Join-Path \$env:LOCALAPPDATA 'Programs\\razochar6e'
+    \$scripts = Join-Path \$dest 'scripts'
+    New-Item -ItemType Directory -Force -Path \$dest, \$scripts | Out-Null
+    Copy-Item -Path '${win_tmp}\\razochar6e.exe' -Destination (Join-Path \$dest 'razochar6e.exe') -Force
+    if (Test-Path '${win_tmp}\\scripts') {
+      Copy-Item -Path '${win_tmp}\\scripts\\*' -Destination \$scripts -Force -ErrorAction SilentlyContinue
+    }
+    Copy-Item -Path '${win_repo}\\scripts\\*.ps1' -Destination \$scripts -Force
     Write-Host \"Installed host binary to \$dest\"
   "
 
   if [[ "$PERSIST" -eq 1 ]]; then
+    log "Registering Windows scheduled task (UAC)..."
     "$ps_exe" -NoProfile -Command "
       Start-Process -FilePath '$ps_exe' -Verb RunAs -Wait -ArgumentList @(
-        '-NoProfile','-ExecutionPolicy','Bypass','-Command',
-        \"& \\\"\$env:LOCALAPPDATA\\Programs\\razochar6e\\razochar6e.exe\\\" install-persist --start $START --end $END\"
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', '$win_persist',
+        '-Start', $START,
+        '-End', $END
       )
-    " || warn "Elevated persist skipped — run install-persist in Admin PowerShell"
+    " || warn "Elevated persist skipped — in Admin PowerShell run:"
+    echo "  razochar6e install-persist --start $START --end $END"
   fi
   rm -rf "$tmpdir"
 }
@@ -319,7 +331,8 @@ apply_limits_unix() {
     return
   fi
 
-  "$razo" config init 2>/dev/null || "$razo" config set --start "$START" --end "$END"
+  "$razo" config set --start "$START" --end "$END" 2>/dev/null \
+    || { "$razo" config init 2>/dev/null; "$razo" config set --start "$START" --end "$END"; }
 
   case "$PLATFORM" in
     wsl)
