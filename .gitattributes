@@ -1,2 +1,4 @@
 setup.sh text eol=lf
 scripts/*.sh text eol=lf
+scripts/cargo-build.sh text eol=lf
+scripts/install-prebuilt.sh text eol=lf

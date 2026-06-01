@@ -11,6 +11,7 @@ APPLY=1
 PERSIST=1
 SKIP_HOST=0
 SKIP_BUILD=0
+FROM_SOURCE=0
 
 log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!>\033[0m %s\n' "$*" >&2; }
@@ -22,24 +23,30 @@ Usage: ./setup.sh [options]
 
 Auto-detects Linux, WSL, macOS, or Windows (Git Bash) and:
   - installs build dependencies + Rust (via rustup if needed)
-  - builds and installs razochar6e
+  - installs razochar6e (prebuilt download by default — fast)
   - initializes config and runs doctor
   - applies 20–80% thresholds when supported (may need sudo / Admin)
 
 Options:
-  --start N       Lower charge threshold (default: 20)
-  --end N         Upper charge threshold (default: 80)
-  --prefix DIR    Install binary to DIR/bin (default: ~/.local)
-  --debug         Debug build instead of --release
-  --no-apply      Skip applying charge limits after install
-  --no-persist    Skip install-persist / Windows scheduled task
-  --skip-host     WSL only: do not install Windows host helper
-  --skip-build    Skip cargo build (binary must already exist)
-  -h, --help      Show this help
+  --start N         Lower charge threshold (default: 20)
+  --end N           Upper charge threshold (default: 80)
+  --prefix DIR      Install binary to DIR/bin (default: ~/.local)
+  --from-source     Compile with cargo (slow: 5–20 min first time on Windows)
+  --debug           Debug build (only with --from-source)
+  --no-apply        Skip applying charge limits after install
+  --no-persist      Skip install-persist / Windows scheduled task
+  --skip-host       WSL only: do not install Windows host helper
+  --skip-build      Skip install (binary must already exist)
+  -h, --help        Show this help
+
+Why did it look frozen?
+  First `cargo build` on Windows/WSL pauses a long time on proc-macros
+  (serde_derive, clap_derive around step 49/61). That is normal.
+  Default mode downloads a release binary instead (~30 seconds).
 
 Examples:
-  ./setup.sh
-  ./setup.sh --start 25 --end 85 --no-persist
+  ./setup.sh                    # fast: download prebuilt
+  ./setup.sh --from-source      # compile locally
   curl -fsSL https://raw.githubusercontent.com/jrb00013/razochar6e/main/setup.sh | bash
 EOF
 }
@@ -49,7 +56,8 @@ while [[ $# -gt 0 ]]; do
     --start) START="$2"; shift 2 ;;
     --end) END="$2"; shift 2 ;;
     --prefix) PREFIX="$2"; shift 2 ;;
-    --debug) RELEASE=0; shift ;;
+    --from-source) FROM_SOURCE=1; shift ;;
+    --debug) RELEASE=0; FROM_SOURCE=1; shift ;;
     --no-apply) APPLY=0; shift ;;
     --no-persist) PERSIST=0; shift ;;
     --skip-host) SKIP_HOST=1; shift ;;
@@ -104,6 +112,9 @@ ensure_cargo_path() {
 }
 
 install_rust() {
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    return
+  fi
   ensure_cargo_path
   if have_cmd cargo; then
     log "Rust already installed: $(rustc --version)"
@@ -125,6 +136,11 @@ install_rust() {
 }
 
 install_linux_deps() {
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    if have_cmd curl; then
+      return
+    fi
+  fi
   if have_cmd gcc && have_cmd make && have_cmd curl; then
     log "Build tools already present (gcc, make, curl)"
     return
@@ -148,25 +164,90 @@ install_linux_deps() {
 }
 
 install_macos_deps() {
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    return
+  fi
   log "Checking macOS build tools..."
   if ! xcode-select -p >/dev/null 2>&1; then
     warn "Xcode Command Line Tools not found — run: xcode-select --install"
   fi
-  if have_cmd brew; then
-    log "Optional SMC tools (install any one for macos_cli backend):"
-    echo "  brew install batt    # https://github.com/charlie0129/batt"
-    echo "  # or: battery, bclm — see docs/VENDORS.md"
-  else
-    warn "Homebrew not found — optional: install batt/battery/bclm for charge limits"
+}
+
+install_prebuilt_unix() {
+  chmod +x "$REPO_ROOT/scripts/install-prebuilt.sh"
+  "$REPO_ROOT/scripts/install-prebuilt.sh" "${1:-}"
+  export PATH="$PREFIX/bin:$PATH"
+}
+
+build_and_install_unix() {
+  if [[ "$SKIP_BUILD" -eq 1 ]]; then
+    export PATH="$PREFIX/bin:$PATH"
+    return
   fi
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    log "Installing prebuilt binary (fast — no compile)..."
+    install_prebuilt_unix
+    return
+  fi
+  log "Building from source (this takes a while on first run)..."
+  local args=()
+  [[ "$RELEASE" -eq 1 ]] && args+=(--release)
+  "$REPO_ROOT/scripts/install.sh" "${args[@]}" --prefix "$PREFIX"
+  export PATH="$PREFIX/bin:$PATH"
+}
+
+install_windows_host_prebuilt() {
+  local ps_exe="powershell.exe"
+  have_cmd powershell.exe || ps_exe="pwsh.exe"
+  if ! have_cmd "$ps_exe"; then
+    return 1
+  fi
+
+  log "Installing Windows host from prebuilt release (no cargo on Windows)..."
+  local tag ver url tmpdir win_tmp
+  tag="$(curl -fsSL https://api.github.com/repos/jrb00013/razochar6e/releases/latest \
+    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)"
+  ver="${tag#v}"
+  url="https://github.com/jrb00013/razochar6e/releases/download/${tag}/razochar6e-${ver}-windows-x86_64.tar.gz"
+  tmpdir="$(mktemp -d)"
+  curl -fL --progress-bar "$url" -o "$tmpdir/win.tar.gz"
+  tar -xzf "$tmpdir/win.tar.gz" -C "$tmpdir"
+
+  if have_cmd wslpath; then
+    win_tmp="$(wslpath -w "$tmpdir")"
+  else
+    return 1
+  fi
+
+  "$ps_exe" -NoProfile -Command "
+    \$dest = \"\$env:LOCALAPPDATA\\Programs\\razochar6e\"
+    New-Item -ItemType Directory -Force -Path \$dest | Out-Null
+    Copy-Item '${win_tmp}\\razochar6e.exe' (Join-Path \$dest 'razochar6e.exe') -Force
+    New-Item -ItemType Directory -Force -Path (Join-Path \$dest 'scripts') | Out-Null
+    Copy-Item '${win_tmp}\\scripts\\*' (Join-Path \$dest 'scripts') -Force -ErrorAction SilentlyContinue
+    Write-Host \"Installed host binary to \$dest\"
+  "
+
+  if [[ "$PERSIST" -eq 1 ]]; then
+    "$ps_exe" -NoProfile -Command "
+      Start-Process -FilePath '$ps_exe' -Verb RunAs -Wait -ArgumentList @(
+        '-NoProfile','-ExecutionPolicy','Bypass','-Command',
+        \"& \\\"\$env:LOCALAPPDATA\\Programs\\razochar6e\\razochar6e.exe\\\" install-persist --start $START --end $END\"
+      )
+    " || warn "Elevated persist skipped — run install-persist in Admin PowerShell"
+  fi
+  rm -rf "$tmpdir"
 }
 
 install_windows_host_via_powershell() {
   local win_root ps1
   if ! have_cmd powershell.exe && ! have_cmd pwsh.exe; then
-    warn "powershell.exe not found — install Windows host manually (Admin):"
-    echo "  .\\scripts\\install-windows.ps1 -Start $START -End $END"
+    warn "powershell.exe not found — install Windows host manually (Admin)"
     return 1
+  fi
+
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    install_windows_host_prebuilt && return 0
   fi
 
   local ps_exe="powershell.exe"
@@ -176,11 +257,11 @@ install_windows_host_via_powershell() {
     win_root="$(wslpath -w "$REPO_ROOT")"
     ps1="${win_root}\\scripts\\install-windows.ps1"
   else
-    warn "wslpath unavailable — run install-windows.ps1 on Windows as Administrator"
     return 1
   fi
 
-  log "Installing Windows host helper (UAC prompt may appear)..."
+  log "Windows host: compiling on Windows (slow — 5–20 min first time)..."
+  log "Tip: cancel and re-run without --from-source to download prebuilt instead"
   "$ps_exe" -NoProfile -Command \
     "Start-Process -FilePath '$ps_exe' -Verb RunAs -Wait -ArgumentList @(
       '-NoProfile','-ExecutionPolicy','Bypass',
@@ -188,59 +269,42 @@ install_windows_host_via_powershell() {
       '-Start',$START,
       '-End',$END
     )" || {
-      warn "Elevated Windows install failed or was cancelled."
-      warn "Run as Administrator in PowerShell:"
-      echo "  cd '$win_root'; .\\scripts\\install-windows.ps1 -Start $START -End $END"
+      warn "Elevated Windows install failed — try: install-windows-host-prebuilt or ./setup.sh without --from-source"
       return 1
     }
-  return 0
 }
 
 run_windows_setup() {
   local ps_exe="powershell.exe"
   have_cmd powershell.exe || ps_exe="pwsh.exe"
   if ! have_cmd "$ps_exe"; then
-    die "PowerShell required on Windows — open PowerShell as Administrator and run scripts/install-windows.ps1"
+    die "PowerShell required on Windows"
   fi
 
-  log "Windows detected — running install-windows.ps1 (run as Administrator for full install)..."
-  local ps1="$REPO_ROOT/scripts/install-windows.ps1"
-  [[ -f "$ps1" ]] || die "Missing $ps1"
-
-  install_rust
-
-  local ps_args=(-Start "$START" -End "$END")
-  [[ "$PERSIST" -eq 0 ]] && ps_args+=(-NoPersist)
-  [[ "$SKIP_BUILD" -eq 1 ]] && ps_args+=(-NoBuild)
-
-  "$ps_exe" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${ps_args[@]}"
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    log "Fast install: downloading prebuilt Windows binary..."
+    install_windows_host_prebuilt || die "Prebuilt Windows install failed"
+  else
+    install_rust
+    local ps1="$REPO_ROOT/scripts/install-windows.ps1"
+    log "Compiling on Windows (5–20 min first time — not frozen at step 49/61)..."
+    local ps_args=(-Start "$START" -End "$END")
+    [[ "$PERSIST" -eq 0 ]] && ps_args+=(-NoPersist)
+    [[ "$SKIP_BUILD" -eq 1 ]] && ps_args+=(-NoBuild)
+    "$ps_exe" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${ps_args[@]}"
+  fi
 
   if [[ "$APPLY" -eq 1 ]]; then
     local win_dest="${LOCALAPPDATA:-$HOME/AppData/Local}/Programs/razochar6e/razochar6e.exe"
-    if [[ -f "$win_dest" ]]; then
-      "$win_dest" config init 2>/dev/null || true
-      "$win_dest" set --start "$START" --end "$END" --save 2>/dev/null || \
-        warn "Apply limits: run Admin PowerShell → razochar6e set --start $START --end $END"
-    fi
+    [[ -f "$win_dest" ]] && "$win_dest" config init 2>/dev/null || true
   fi
 
   export PATH="${LOCALAPPDATA:-}/Programs/razochar6e:$PATH"
-  log "Run: razochar6e probe"
-}
-
-build_and_install_unix() {
-  local args=()
-  [[ "$RELEASE" -eq 1 ]] && args+=(--release)
-  [[ "$SKIP_BUILD" -eq 0 ]] && "$REPO_ROOT/scripts/install.sh" "${args[@]}" --prefix "$PREFIX"
-  export PATH="$PREFIX/bin:$PATH"
 }
 
 path_has_sysfs_thresholds() {
   local f
   for f in /sys/class/power_supply/BAT*/charge_control_end_threshold; do
-    [[ -e "$f" ]] && return 0
-  done
-  for f in /sys/class/power_supply/BAT*/charge_stop_threshold; do
     [[ -e "$f" ]] && return 0
   done
   return 1
@@ -261,33 +325,20 @@ apply_limits_unix() {
     wsl)
       if [[ "$APPLY" -eq 1 ]]; then
         log "Applying limits via WSL → Windows host..."
-        "$razo" wsl set --start "$START" --end "$END" || warn "wsl set failed — complete Windows host install first"
+        "$razo" wsl set --start "$START" --end "$END" || warn "wsl set failed — finish Windows host install first"
       fi
       ;;
     linux)
-      if path_has_sysfs_thresholds; then
-        if [[ "$APPLY" -eq 1 ]]; then
-          log "Applying sysfs thresholds (sudo)..."
-          sudo "$razo" set --start "$START" --end "$END" --save
-        fi
-        if [[ "$PERSIST" -eq 1 ]]; then
-          sudo "$razo" install-persist --start "$START" --end "$END" || warn "install-persist failed"
-        fi
-      else
-        warn "No charge_control_* sysfs on this machine — probe only"
-        "$razo" probe || true
+      if path_has_sysfs_thresholds && [[ "$APPLY" -eq 1 ]]; then
+        log "Applying sysfs thresholds (sudo)..."
+        sudo "$razo" set --start "$START" --end "$END" --save
+        [[ "$PERSIST" -eq 1 ]] && sudo "$razo" install-persist --start "$START" --end "$END" || true
       fi
       ;;
     macos)
       if [[ "$APPLY" -eq 1 ]]; then
-        log "Applying via macOS backend (sudo may be required)..."
         sudo "$razo" set --start "$START" --end "$END" --save 2>/dev/null \
-          || "$razo" set --start "$START" --end "$END" --save \
-          || warn "set failed — install batt/battery/bclm (see docs/VENDORS.md)"
-      fi
-      if [[ "$PERSIST" -eq 1 ]]; then
-        sudo "$razo" install-persist --start "$START" --end "$END" 2>/dev/null \
-          || warn "install-persist needs sudo"
+          || "$razo" set --start "$START" --end "$END" --save || true
       fi
       ;;
   esac
@@ -296,12 +347,10 @@ apply_limits_unix() {
 post_install() {
   local razo="$PREFIX/bin/razochar6e"
   have_cmd razochar6e && razo="razochar6e"
-
   log "Running doctor..."
   "$razo" doctor || true
-
   if [[ ":$PATH:" != *":$PREFIX/bin:"* ]]; then
-    warn "Add to your shell rc:  export PATH=\"$PREFIX/bin:\$PATH\""
+    warn "Add to shell rc: export PATH=\"$PREFIX/bin:\$PATH\""
   fi
 }
 
@@ -309,6 +358,11 @@ main() {
   PLATFORM="$(detect_platform)"
   log "Platform: $PLATFORM"
   log "Repo: $REPO_ROOT"
+  if [[ "$FROM_SOURCE" -eq 0 ]]; then
+    log "Mode: prebuilt download (use --from-source to compile)"
+  else
+    warn "Mode: compile from source — first build is slow; do not Ctrl+C at step 49/61"
+  fi
 
   case "$PLATFORM" in
     linux)
@@ -321,10 +375,10 @@ main() {
     wsl)
       install_linux_deps
       install_rust
+      build_and_install_unix
       if [[ "$SKIP_HOST" -eq 0 ]]; then
         install_windows_host_via_powershell || true
       fi
-      build_and_install_unix
       apply_limits_unix
       post_install
       ;;
@@ -339,25 +393,11 @@ main() {
       run_windows_setup
       ;;
     *)
-      die "Unsupported platform (uname: $(uname -a 2>/dev/null || true)). Set RAZOCHAR6E_PLATFORM=linux|wsl|macos|windows"
+      die "Unsupported platform"
       ;;
   esac
 
   log "Setup complete."
-  case "$PLATFORM" in
-    wsl)
-      echo "  razochar6e wsl status"
-      echo "  razochar6e wsl set --start $START --end $END"
-      ;;
-    windows)
-      echo "  razochar6e probe"
-      echo "  razochar6e status"
-      ;;
-    *)
-      echo "  razochar6e probe"
-      echo "  razochar6e status"
-      ;;
-  esac
 }
 
 main "$@"

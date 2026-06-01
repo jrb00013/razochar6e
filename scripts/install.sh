@@ -22,10 +22,10 @@ done
 
 cd "$REPO_ROOT"
 if [[ "$RELEASE" -eq 1 ]]; then
-  cargo build --release
+  "$REPO_ROOT/scripts/cargo-build.sh" --release
   BIN="$REPO_ROOT/target/release/razochar6e"
 else
-  cargo build
+  "$REPO_ROOT/scripts/cargo-build.sh" --debug
   BIN="$REPO_ROOT/target/debug/razochar6e"
 fi
 

@@ -1,5 +1,19 @@
 # Troubleshooting
 
+## `setup.sh` looks frozen at `Building ... 49/61`
+
+This is **normal** on the first compile (Windows or `--from-source`). Rust spends a long time on proc-macros (`serde_derive`, `clap_derive`, `thiserror-impl`) with little console movement.
+
+**Fix (recommended):** use the default fast path — do **not** pass `--from-source`:
+
+```bash
+./setup.sh
+```
+
+That downloads a prebuilt binary from GitHub Releases (~30 seconds).
+
+If you already started a compile, let it finish once (can take 5–20 minutes), or Ctrl+C and re-run `./setup.sh` without `--from-source`.
+
 ## `probe` shows no backends
 
 **Linux:** Your kernel driver may not expose charge thresholds. Check BIOS for “battery care” / “charge limit” and try a newer kernel.
