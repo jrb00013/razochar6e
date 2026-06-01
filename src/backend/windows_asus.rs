@@ -77,14 +77,11 @@ fn script_path() -> PathBuf {
     let name = "asus-battery-limit.ps1";
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            for candidate in [
-                dir.join("scripts").join(name),
-                dir.join(name),
-                dir.parent().map(|p| p.join("scripts").join(name)),
-            ]
-            .into_iter()
-            .flatten()
-            {
+            let mut candidates = vec![dir.join("scripts").join(name), dir.join(name)];
+            if let Some(parent) = dir.parent() {
+                candidates.push(parent.join("scripts").join(name));
+            }
+            for candidate in candidates {
                 if candidate.exists() {
                     return candidate;
                 }
