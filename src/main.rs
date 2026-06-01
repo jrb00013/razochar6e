@@ -158,19 +158,23 @@ fn cmd_status() -> RazResult<()> {
 }
 
 fn cmd_wsl(cmd: WslCommands) -> RazResult<()> {
+    #[cfg(unix)]
+    {
+        match cmd {
+            WslCommands::Probe => backend::wsl_bridge::wsl_probe()?,
+            WslCommands::Status => backend::wsl_bridge::wsl_status()?,
+            WslCommands::Set { start, end } => {
+                backend::wsl_bridge::wsl_set(Thresholds { start, end })?
+            }
+        }
+        Ok(())
+    }
+
     #[cfg(not(unix))]
     {
         let _ = cmd;
-        return Err(error::RazError::WslBridge(
+        Err(error::RazError::WslBridge(
             "WSL bridge only applies on Linux/WSL".into(),
-        ));
+        ))
     }
-
-    #[cfg(unix)]
-    match cmd {
-        WslCommands::Probe => backend::wsl_bridge::wsl_probe()?,
-        WslCommands::Status => backend::wsl_bridge::wsl_status()?,
-        WslCommands::Set { start, end } => backend::wsl_bridge::wsl_set(Thresholds { start, end })?,
-    }
-    Ok(())
 }

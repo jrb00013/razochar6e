@@ -2,23 +2,14 @@
 
 use crate::backend::{ChargeBackend, Thresholds};
 use crate::error::{RazError, RazResult};
-use std::cell::Cell;
 use std::process::Command;
 
-pub struct WindowsWmiAsusBackend {
-    last_end: Cell<Option<u8>>,
-}
+pub struct WindowsWmiAsusBackend;
 
 impl WindowsWmiAsusBackend {
-    pub fn available() -> bool {
-        probe_detail().0
-    }
-
     pub fn open() -> Option<Self> {
-        if Self::available() {
-            Some(Self {
-                last_end: Cell::new(None),
-            })
+        if Self::probe_detail().0 {
+            Some(Self)
         } else {
             None
         }
@@ -85,12 +76,10 @@ impl ChargeBackend for WindowsWmiAsusBackend {
                 t.end, t.start
             );
         }
-        self.set_limit(t.end)?;
-        self.last_end.set(Some(t.end));
-        Ok(())
+        self.set_limit(t.end)
     }
 
     fn get_thresholds(&self) -> RazResult<Option<Thresholds>> {
-        Ok(self.last_end.get().map(|end| Thresholds { start: 0, end }))
+        Ok(None)
     }
 }

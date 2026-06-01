@@ -111,12 +111,6 @@ fn run_systemctl(args: &[&str]) -> RazResult<()> {
 #[cfg(windows)]
 fn install_windows_task(t: &Thresholds) -> RazResult<()> {
     let exe = std::env::current_exe().map_err(crate::error::RazError::Io)?;
-    let tr = format!(
-        r#""{}" set --start {} --end {}"#,
-        exe.display(),
-        t.start,
-        t.end
-    );
     let ps = format!(
         r#"
 $action = New-ScheduledTaskAction -Execute '{}' -Argument 'set --start {} --end {}'

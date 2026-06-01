@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.2] - 2026-06-01
+
+### Fixed
+
+- Windows build: `Sync` on WMI backend, `GENERIC_READ` import, `cmd_wsl` cfg layout
+
 ## [0.2.1] - 2026-06-01
 
 ### Fixed

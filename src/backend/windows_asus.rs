@@ -7,10 +7,9 @@ use crate::backend::{ChargeBackend, Thresholds};
 use crate::error::{RazError, RazResult};
 use std::mem;
 use windows::core::PCWSTR;
-use windows::Win32::Foundation::{CloseHandle, HANDLE};
+use windows::Win32::Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE};
 use windows::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_READ,
-    GENERIC_WRITE, OPEN_EXISTING,
+    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
@@ -27,7 +26,6 @@ struct AsusChargeInput {
 
 pub struct WindowsAsusBackend {
     handle: HANDLE,
-    last_end: Option<u8>,
 }
 
 impl WindowsAsusBackend {
@@ -51,10 +49,7 @@ impl WindowsAsusBackend {
         if handle.is_invalid() {
             return None;
         }
-        Some(Self {
-            handle,
-            last_end: None,
-        })
+        Some(Self { handle })
     }
 
     fn ioctl_set_limit(&self, percent: u8) -> RazResult<()> {
@@ -126,11 +121,10 @@ impl ChargeBackend for WindowsAsusBackend {
             );
         }
         self.ioctl_set_limit(t.end)?;
-        self.last_end = Some(t.end);
         Ok(())
     }
 
     fn get_thresholds(&self) -> RazResult<Option<Thresholds>> {
-        Ok(self.last_end.map(|end| Thresholds { start: 0, end }))
+        Ok(None)
     }
 }
