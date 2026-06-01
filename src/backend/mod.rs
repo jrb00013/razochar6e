@@ -36,7 +36,6 @@ impl Thresholds {
         }
         Ok(())
     }
-
 }
 
 pub trait ChargeBackend: Send + Sync {

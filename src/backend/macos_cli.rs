@@ -4,7 +4,7 @@ use crate::backend::{ChargeBackend, Thresholds};
 use crate::error::{RazError, RazResult};
 use std::process::Command;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum MacTool {
     Batt,
     BatteryMaintain,

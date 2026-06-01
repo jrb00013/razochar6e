@@ -1,5 +1,3 @@
 /target/
 **/*.rs.bk
 
-# Generated locally; CI can regenerate
-/completions/

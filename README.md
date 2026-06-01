@@ -105,6 +105,7 @@ See [docs/VENDORS.md](docs/VENDORS.md) for per-OEM notes.
 
 ## Docs
 
+- [ASUS ROG + WSL quick start](docs/QUICKSTART-ROG-WSL.md)
 - [Vendor matrix](docs/VENDORS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Contributing](CONTRIBUTING.md)

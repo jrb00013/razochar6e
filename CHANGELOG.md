@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.1] - 2026-06-01
+
+### Fixed
+
+- macOS build: `MacOsCliBackend::probe_detail` and `Debug` on `MacTool`
+- Release workflow packaging and macOS aarch64-only artifacts
+- Windows `CreateFileW` access flags via `GENERIC_READ | GENERIC_WRITE`
+
 ## [0.2.0] - 2026-06-01
 
 ### Added

@@ -9,7 +9,8 @@ use std::mem;
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use windows::Win32::Storage::FileSystem::{
-    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+    CreateFileW, FILE_ATTRIBUTE_NORMAL, FILE_SHARE_READ, FILE_SHARE_WRITE, GENERIC_READ,
+    GENERIC_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
 
@@ -38,7 +39,7 @@ impl WindowsAsusBackend {
         let handle = unsafe {
             CreateFileW(
                 PCWSTR(path.as_ptr()),
-                0xC000_0000, // GENERIC_READ | GENERIC_WRITE
+                GENERIC_READ | GENERIC_WRITE,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 None,
                 OPEN_EXISTING,

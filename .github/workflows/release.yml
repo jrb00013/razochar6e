@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -21,10 +22,6 @@ jobs:
             target: x86_64-pc-windows-msvc
             name: windows-x86_64
             ext: .exe
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            name: macos-x86_64
-            ext: ""
           - os: macos-latest
             target: aarch64-apple-darwin
             name: macos-aarch64
@@ -40,15 +37,15 @@ jobs:
       - name: Package
         shell: bash
         run: |
+          set -euo pipefail
           VER="${GITHUB_REF_NAME#v}"
-          ARCHIVE="razochar6e-${VER}-${{ matrix.name }}"
+          ARCHIVE="razochar6e-${VER}-${{ matrix.name }}.tar.gz"
           mkdir -p dist
           cp "target/${{ matrix.target }}/release/razochar6e${{ matrix.ext }}" "dist/razochar6e${{ matrix.ext }}"
           cp README.md LICENSE CHANGELOG.md dist/
-          cp -r scripts deploy dist/
-          cd dist && tar czf "../${ARCHIVE}.tar.gz" *
-          cd ..
-          echo "ARCHIVE=${ARCHIVE}.tar.gz" >> "$GITHUB_ENV"
+          cp -r scripts deploy completions dist/
+          tar -czf "${ARCHIVE}" -C dist .
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
@@ -64,5 +61,5 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*
+          files: artifacts/**
           generate_release_notes: true

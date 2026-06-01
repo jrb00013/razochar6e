@@ -91,7 +91,7 @@ pub fn probe_all() -> Vec<BackendProbeResult> {
 
     #[cfg(target_os = "macos")]
     {
-        let (avail, detail) = super::macos_cli::probe_detail();
+        let (avail, detail) = super::macos_cli::MacOsCliBackend::probe_detail();
         out.push(BackendProbeResult {
             kind: BackendKind::MacOsCli,
             available: avail,
