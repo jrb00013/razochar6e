@@ -69,9 +69,7 @@ fn find_host_script() -> RazResult<String> {
         }
     }
     if let Ok(home) = std::env::var("HOME") {
-        let installed = format!(
-            "{home}/.local/share/razochar6e/scripts/razochar6e-host.ps1"
-        );
+        let installed = format!("{home}/.local/share/razochar6e/scripts/razochar6e-host.ps1");
         if std::path::Path::new(&installed).exists() {
             return windows_path(&installed);
         }
