@@ -221,20 +221,57 @@ fn find_helper_script() -> RazResult<PathBuf> {
     })
 }
 
-fn python_bins() -> Vec<&'static str> {
+fn python_bins() -> Vec<String> {
+    let mut bins: Vec<String> = Vec::new();
     #[cfg(windows)]
     {
-        vec!["python", "py"]
+        bins.push("python".into());
+        bins.push("py".into());
     }
     #[cfg(not(windows))]
     {
-        // Prefer Windows Python from WSL when available (same LAN view as the host).
-        if std::env::var_os("WSL_DISTRO_NAME").is_some() {
-            vec!["python.exe", "python3", "python"]
-        } else {
-            vec!["python3", "python"]
+        let wsl = std::env::var_os("WSL_DISTRO_NAME").is_some()
+            || std::fs::read_to_string("/proc/version")
+                .map(|v| v.to_lowercase().contains("microsoft"))
+                .unwrap_or(false);
+        if wsl {
+            // Resolve Windows Python explicitly — bare `python.exe` is not always
+            // on PATH for non-interactive Command::new invocations.
+            if let Ok(out) = Command::new("which").arg("python.exe").output() {
+                if out.status.success() {
+                    let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if !p.is_empty() {
+                        bins.push(p);
+                    }
+                }
+            }
+            // Common install locations under the Windows user profile.
+            if let Ok(entries) = std::fs::read_dir("/mnt/c/Users") {
+                for entry in entries.flatten() {
+                    let base = entry.path().join("AppData/Local/Programs/Python");
+                    if let Ok(pythons) = std::fs::read_dir(&base) {
+                        for py in pythons.flatten() {
+                            let exe = py.path().join("python.exe");
+                            if exe.exists() {
+                                bins.push(exe.to_string_lossy().into_owned());
+                            }
+                        }
+                    }
+                }
+            }
+            bins.push("python.exe".into());
         }
+        // Project / user venv with python-kasa (Linux).
+        if let Ok(home) = std::env::var("HOME") {
+            let venv = format!("{home}/.local/share/razochar6e/venv/bin/python");
+            if std::path::Path::new(&venv).exists() {
+                bins.push(venv);
+            }
+        }
+        bins.push("python3".into());
+        bins.push("python".into());
     }
+    bins
 }
 
 fn run_helper(args: &[&str], auth: &KasaAuth) -> RazResult<Value> {
@@ -254,7 +291,7 @@ fn run_helper(args: &[&str], auth: &KasaAuth) -> RazResult<Value> {
 
     let mut last_err = String::new();
     for bin in python_bins() {
-        let out = Command::new(bin).args(&cmd_args).output();
+        let out = Command::new(&bin).args(&cmd_args).output();
         let out = match out {
             Ok(o) => o,
             Err(e) => {

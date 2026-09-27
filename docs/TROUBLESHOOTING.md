@@ -64,3 +64,13 @@ Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `
 
 4. From WSL, the plug must be reachable on the LAN (mirrored networking or host route). If discovery only works in Windows Python, pass `--host` explicitly from WSL.
 5. Legacy plugs (TCP 9999) need no credentials — if connect to `:9999` works, the built-in XOR client is used.
+
+## Kasa auth fails even with the correct password (EP10 / KLAP lv2)
+
+Stock `python-kasa` `Discover` maps `IOT.SMARTPLUGSWITCH` + KLAP to **KlapTransport v1**
+hashes. EP10 firmware with `lv: 2` / `new_klap` needs **KlapTransportV2** hashes while
+still using the IoT protocol. `scripts/kasa_plug.py` forces that combo.
+
+Debug signature when the wrong transport is used:
+`Device response did not match our challenge` on handshake1, even though
+`owner` = MD5(email) matches your account.
