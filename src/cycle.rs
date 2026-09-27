@@ -15,8 +15,12 @@ pub enum Action {
 }
 
 /// Hysteresis band: only switch at the edges.
+///
+/// Upper cut uses 1% slack (`pct + 1 >= end`) so firmware/WMI that stick at
+/// `end - 1` (common with an 80% charge limit reporting 79) still cut AC.
 pub fn decide(pct: u8, start: u8, end: u8, relay_on: bool) -> Action {
-    if pct >= end && relay_on {
+    let cut_at = end.saturating_sub(1);
+    if pct >= cut_at && relay_on {
         Action::TurnOff
     } else if pct <= start && !relay_on {
         Action::TurnOn
@@ -71,7 +75,11 @@ fn tick(opts: &CycleOpts) -> RazResult<()> {
     let action = decide(pct, opts.start, opts.end, on);
     match action {
         Action::TurnOff => {
-            println!("{pct}% ≥ {}% and outlet ON → cutting AC", opts.end);
+            println!(
+                "{pct}% at/above cut (≥{}%, end={}%) and outlet ON → cutting AC",
+                opts.end.saturating_sub(1),
+                opts.end
+            );
             kasa::set_on(&opts.host, false, &opts.auth)?;
         }
         Action::TurnOn => {
@@ -143,6 +151,13 @@ mod tests {
     }
 
     #[test]
+    fn cuts_at_end_minus_one_slack() {
+        // WMI/ASUS often sit at 79% when the limit is 80%.
+        assert_eq!(decide(79, 20, 80, true), Action::TurnOff);
+        assert_eq!(decide(78, 20, 80, true), Action::Hold);
+    }
+
+    #[test]
     fn restores_at_start_when_off() {
         assert_eq!(decide(20, 20, 80, false), Action::TurnOn);
         assert_eq!(decide(10, 20, 80, false), Action::TurnOn);
@@ -157,6 +172,7 @@ mod tests {
     #[test]
     fn holds_at_end_if_already_off() {
         assert_eq!(decide(85, 20, 80, false), Action::Hold);
+        assert_eq!(decide(79, 20, 80, false), Action::Hold);
     }
 
     #[test]
