@@ -11,6 +11,11 @@ All notable changes to this project are documented in this file.
 - Config `kasa_host`; battery % from real Linux sysfs or Windows WMI (WSL-aware)
 - `razochar6e benchmark` — logistic regression over candidate charge bands; projected kWh/$ vs 100% float
 
+### Fixed
+
+- `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
+- Battery % read retries WMI up to 3 times before reporting failure
+
 ## [0.2.6] - 2026-06-01
 
 ### Added

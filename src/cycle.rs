@@ -3,6 +3,7 @@
 use crate::battery;
 use crate::error::{RazError, RazResult};
 use crate::kasa::{self, KasaAuth};
+use std::io::{self, Write};
 use std::thread;
 use std::time::Duration;
 
@@ -64,6 +65,30 @@ pub fn resolve_host(
     }
 }
 
+fn tick(opts: &CycleOpts) -> RazResult<()> {
+    let pct = battery::battery_percent()?;
+    let on = kasa::is_on(&opts.host, &opts.auth)?;
+    let action = decide(pct, opts.start, opts.end, on);
+    match action {
+        Action::TurnOff => {
+            println!("{pct}% ≥ {}% and outlet ON → cutting AC", opts.end);
+            kasa::set_on(&opts.host, false, &opts.auth)?;
+        }
+        Action::TurnOn => {
+            println!("{pct}% ≤ {}% and outlet OFF → restoring AC", opts.start);
+            kasa::set_on(&opts.host, true, &opts.auth)?;
+        }
+        Action::Hold => {
+            println!(
+                "{pct}% in band, outlet={} → hold",
+                if on { "ON" } else { "OFF" }
+            );
+        }
+    }
+    let _ = io::stdout().flush();
+    Ok(())
+}
+
 pub fn run(opts: CycleOpts) -> RazResult<()> {
     if opts.start >= opts.end {
         return Err(RazError::InvalidThreshold(format!(
@@ -80,25 +105,23 @@ pub fn run(opts: CycleOpts) -> RazResult<()> {
         opts.interval.as_secs(),
         if opts.once { " (once)" } else { "" }
     );
+    let _ = io::stdout().flush();
 
     loop {
-        let pct = battery::battery_percent()?;
-        let on = kasa::is_on(&opts.host, &opts.auth)?;
-        let action = decide(pct, opts.start, opts.end, on);
-        match action {
-            Action::TurnOff => {
-                println!("{pct}% ≥ {}% and outlet ON → cutting AC", opts.end);
-                kasa::set_on(&opts.host, false, &opts.auth)?;
+        match tick(&opts) {
+            Ok(()) => {
+                if opts.once {
+                    break;
+                }
             }
-            Action::TurnOn => {
-                println!("{pct}% ≤ {}% and outlet OFF → restoring AC", opts.start);
-                kasa::set_on(&opts.host, true, &opts.auth)?;
-            }
-            Action::Hold => {
-                println!(
-                    "{pct}% in band, outlet={} → hold",
-                    if on { "ON" } else { "OFF" }
-                );
+            Err(e) => {
+                // Never abort the long-running loop on transient WMI / plug errors —
+                // that previously left the laptop discharging with no restore.
+                eprintln!("cycle: transient error (will retry): {e}");
+                let _ = io::stderr().flush();
+                if opts.once {
+                    return Err(e);
+                }
             }
         }
         if opts.once {

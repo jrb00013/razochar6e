@@ -65,6 +65,17 @@ Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `
 4. From WSL, the plug must be reachable on the LAN (mirrored networking or host route). If discovery only works in Windows Python, pass `--host` explicitly from WSL.
 5. Legacy plugs (TCP 9999) need no credentials — if connect to `:9999` works, the built-in XOR client is used.
 
+## `cycle` stopped and never restored AC
+
+Older builds **exited the loop** if a single Windows WMI battery read failed, so the plug
+stayed off while the pack kept draining. Current builds log
+`cycle: transient error (will retry): …` and keep polling. Upgrade / rebuild, then:
+
+```bash
+razochar6e cycle on --host <ip>   # restore AC immediately if needed
+razochar6e cycle --host <ip>      # restart the loop
+```
+
 ## Kasa auth fails even with the correct password (EP10 / KLAP lv2)
 
 Stock `python-kasa` `Discover` maps `IOT.SMARTPLUGSWITCH` + KLAP to **KlapTransport v1**
