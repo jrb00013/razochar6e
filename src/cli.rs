@@ -100,6 +100,27 @@ pub enum Commands {
         #[arg(long, global = true)]
         save: bool,
     },
+    /// Logistic-regression benchmark: recommend start/end for $/power vs stranding risk
+    Benchmark {
+        /// Electricity rate in $/kWh
+        #[arg(long, default_value_t = 0.16)]
+        rate: f64,
+        /// Battery capacity in Wh
+        #[arg(long, default_value_t = 90.0)]
+        capacity_wh: f64,
+        /// Estimated daily energy drawn from the pack (Wh)
+        #[arg(long, default_value_t = 40.0)]
+        daily_wh: f64,
+        /// Hours per day the machine must run without AC
+        #[arg(long, default_value_t = 2.0)]
+        hours_away: f64,
+        /// Synthetic samples for the logistic fit
+        #[arg(long, default_value_t = 400)]
+        samples: usize,
+        /// Write recommended start/end into config
+        #[arg(long)]
+        apply: bool,
+    },
 }
 
 #[derive(Subcommand)]

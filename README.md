@@ -67,6 +67,7 @@ Manual: [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md) · [docs/QUICKS
 | `cycle` | Smart-plug charge/drain loop (Kasa) |
 | `cycle on\|off\|state` | Manual Kasa outlet control |
 | `cycle --discover` | List Kasa plugs on the LAN |
+| `benchmark` | Logistic model: recommend start/end for $/power vs stranding |
 
 ```bash
 razochar6e --help
@@ -88,6 +89,16 @@ razochar6e cycle                             # continuous loop (Ctrl+C to stop)
 ```
 
 At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
+
+### Benchmark (optimal band)
+
+Fits a small **logistic regression** over synthetic usage samples and scores candidate `(start, end)` bands for P(acceptable day) vs projected $/yr:
+
+```bash
+razochar6e benchmark
+razochar6e benchmark --rate 0.18 --capacity-wh 90 --daily-wh 40 --hours-away 3
+razochar6e benchmark --apply    # write recommended start/end to config
+```
 
 ## Config
 

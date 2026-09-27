@@ -1,5 +1,6 @@
 mod backend;
 mod battery;
+mod benchmark;
 mod cli;
 mod completions;
 mod config;
@@ -93,6 +94,25 @@ fn run() -> RazResult<()> {
         } => cmd_cycle(
             action, host, start, end, interval, once, discover, username, password, save,
         )?,
+        Commands::Benchmark {
+            rate,
+            capacity_wh,
+            daily_wh,
+            hours_away,
+            samples,
+            apply,
+        } => {
+            let opts = benchmark::BenchmarkOpts {
+                rate_per_kwh: rate,
+                capacity_wh,
+                daily_wh,
+                hours_away,
+                samples,
+                apply,
+            };
+            let report = benchmark::run_benchmark(opts.clone())?;
+            benchmark::print_report(&report, &opts);
+        }
     }
     Ok(())
 }
