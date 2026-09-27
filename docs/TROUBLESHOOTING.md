@@ -77,8 +77,8 @@ razochar6e cycle --host <ip>      # restart the loop
 
 ## `cycle` stuck at 79% with outlet still ON
 
-Windows/ASUS often report **79%** forever when the firmware charge limit is 80%, so a
-strict `>= 80` cut never fires. Current builds cut when `pct >= end - 1` (e.g. 79% for
+Windows/ASUS often report **78–79%** forever when the firmware charge limit is 80%, so a
+strict `>= 80` cut never fires. Current builds cut when `pct >= end - 2` (e.g. **78%** for
 `--end 80`).
 ```
 

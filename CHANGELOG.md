@@ -15,7 +15,7 @@ All notable changes to this project are documented in this file.
 
 - `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
 - Battery % read retries WMI up to 3 times before reporting failure
-- Cut AC at `end - 1` slack so packs stuck at 79% with an 80% limit still trigger
+- Cut AC at `end - 2` slack (e.g. 78% when `--end 80`) so ASUS/WMI stickiness still drains
 
 ## [0.2.6] - 2026-06-01
 
