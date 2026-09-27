@@ -48,3 +48,19 @@ Or install [deploy/99-razochar6e-charge.rules](../deploy/99-razochar6e-charge.ru
 ## `doctor` exits 1
 
 Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `razochar6e probe --json`.
+
+## Kasa `cycle` can't talk to the plug
+
+1. Confirm the laptop **charger** is plugged into the Kasa (not only the Kasa into the wall).
+2. `razochar6e cycle --discover` — your EP10/etc. should appear. Note the IP.
+3. Modern Kasa (KLAP, HTTP port 80) needs the same account as the Kasa app:
+
+   ```bash
+   pip install python-kasa
+   export KASA_USERNAME='you@example.com'
+   export KASA_PASSWORD='…'
+   razochar6e cycle state --host 192.168.x.x
+   ```
+
+4. From WSL, the plug must be reachable on the LAN (mirrored networking or host route). If discovery only works in Windows Python, pass `--host` explicitly from WSL.
+5. Legacy plugs (TCP 9999) need no credentials — if connect to `:9999` works, the built-in XOR client is used.

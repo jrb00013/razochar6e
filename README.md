@@ -64,10 +64,30 @@ Manual: [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md) · [docs/QUICKS
 | `install-persist` | systemd / Task Scheduler / launchd |
 | `completions bash\|fish\|zsh\|…` | Shell completions |
 | `wsl probe\|status\|set` | Control Windows host from WSL |
+| `cycle` | Smart-plug charge/drain loop (Kasa) |
+| `cycle on\|off\|state` | Manual Kasa outlet control |
+| `cycle --discover` | List Kasa plugs on the LAN |
 
 ```bash
 razochar6e --help
 ```
+
+### Kasa charge/drain cycle
+
+Firmware thresholds stop *charging* above your upper limit, but the pack won't *drain* while AC is present. With a Kasa plug on the charger:
+
+```bash
+pip install python-kasa          # needed for modern KLAP plugs (EP10, etc.)
+export KASA_USERNAME='you@example.com'   # same as Kasa app
+export KASA_PASSWORD='…'
+
+razochar6e cycle --discover
+razochar6e cycle --host 192.168.1.88 --save   # remember host in config
+razochar6e cycle --once                      # one poll+action
+razochar6e cycle                             # continuous loop (Ctrl+C to stop)
+```
+
+At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
 
 ## Config
 
@@ -77,8 +97,8 @@ razochar6e --help
 start = 20
 end = 80
 # backend = "linux_sysfs"   # optional force
+# kasa_host = "192.168.1.88"
 ```
-
 ```bash
 razochar6e config init
 razochar6e apply

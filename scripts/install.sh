@@ -32,10 +32,17 @@ fi
 mkdir -p "$PREFIX/bin"
 install -m 755 "$BIN" "$PREFIX/bin/razochar6e"
 
+SHARE="$PREFIX/share/razochar6e/scripts"
+mkdir -p "$SHARE"
+install -m 755 "$REPO_ROOT/scripts/kasa_plug.py" "$SHARE/kasa_plug.py"
+
 echo "Installed razochar6e → $PREFIX/bin/razochar6e"
+echo "Kasa helper → $SHARE/kasa_plug.py"
 echo "Ensure $PREFIX/bin is on your PATH."
 echo ""
 echo "Next:"
 echo "  razochar6e probe"
 echo "  sudo razochar6e set --start 20 --end 80 --save"
 echo "  sudo razochar6e install-persist"
+echo "  # optional smart-plug cycle:"
+echo "  pip install python-kasa && razochar6e cycle --discover"

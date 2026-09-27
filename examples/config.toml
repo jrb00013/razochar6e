@@ -5,3 +5,6 @@ end = 80
 
 # Optional: force a backend (linux_sysfs, windows_asus, windows_wmi_asus, macos_cli)
 # backend = "linux_sysfs"
+
+# Optional: Kasa plug IP for `razochar6e cycle` (credentials via KASA_USERNAME / KASA_PASSWORD)
+# kasa_host = "192.168.1.88"

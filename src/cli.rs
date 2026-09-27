@@ -8,7 +8,9 @@ use clap::{CommandFactory, Parser, Subcommand};
     about = "Battery charge scheduling — stop at end %, resume below start %",
     long_about = "Set firmware-backed charge thresholds so your laptop stops charging above \
                   an upper limit (default 80%) and resumes below a lower limit (default 20%). \
-                  Supports Linux sysfs, Windows ASUS/ROG, macOS SMC tools, and WSL→Windows bridge."
+                  Supports Linux sysfs, Windows ASUS/ROG, macOS SMC tools, and WSL→Windows bridge. \
+                  Optional `cycle` drives a TP-Link Kasa smart plug to cut/restore AC for a full \
+                  charge–drain band."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -68,6 +70,36 @@ pub enum Commands {
     /// WSL: control Windows host battery via PowerShell bridge
     #[command(subcommand)]
     Wsl(WslCommands),
+    /// Charge/drain cycle via Kasa smart plug (cut AC at end%, restore at start%)
+    Cycle {
+        #[command(subcommand)]
+        action: Option<CycleAction>,
+        /// Kasa plug IP (or set `kasa_host` in config / discover)
+        #[arg(long, global = true)]
+        host: Option<String>,
+        #[arg(long, global = true, default_value_t = crate::config::DEFAULT_START)]
+        start: u8,
+        #[arg(long, global = true, default_value_t = crate::config::DEFAULT_END)]
+        end: u8,
+        /// Seconds between polls
+        #[arg(long, global = true, default_value_t = 60)]
+        interval: u64,
+        /// Run a single poll+action then exit
+        #[arg(long, global = true)]
+        once: bool,
+        /// List plugs on the LAN and exit
+        #[arg(long, global = true)]
+        discover: bool,
+        /// TP-Link account email (or env KASA_USERNAME) for KLAP plugs
+        #[arg(long, global = true, env = "KASA_USERNAME")]
+        username: Option<String>,
+        /// TP-Link account password (or env KASA_PASSWORD)
+        #[arg(long, global = true, env = "KASA_PASSWORD")]
+        password: Option<String>,
+        /// Save `kasa_host` (and start/end) into config
+        #[arg(long, global = true)]
+        save: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -97,6 +129,16 @@ pub enum WslCommands {
         #[arg(long, default_value_t = crate::config::DEFAULT_END)]
         end: u8,
     },
+}
+
+#[derive(Subcommand)]
+pub enum CycleAction {
+    /// Turn the plug on (restore AC)
+    On,
+    /// Turn the plug off (cut AC)
+    Off,
+    /// Print plug on/off state as JSON
+    State,
 }
 
 pub fn build_cli() -> clap::Command {
