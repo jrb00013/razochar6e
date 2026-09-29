@@ -10,7 +10,8 @@ use clap::{CommandFactory, Parser, Subcommand};
                   an upper limit (default 80%) and resumes below a lower limit (default 20%). \
                   Supports Linux sysfs, Windows ASUS/ROG, macOS SMC tools, and WSL→Windows bridge. \
                   Optional `cycle` drives a TP-Link Kasa smart plug to cut/restore AC for a full \
-                  charge–drain band."
+                  charge–drain band. `sleepcut` cuts the plug when *you* sleep Windows and \
+                  restores it on wake (no auto-sleep)."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -98,6 +99,24 @@ pub enum Commands {
         password: Option<String>,
         /// Save `kasa_host` (and start/end) into config
         #[arg(long, global = true)]
+        save: bool,
+    },
+    /// Cut Kasa AC when Windows sleeps; restore on wake (you sleep the PC — no auto-sleep)
+    Sleepcut {
+        /// Kasa plug IP (or `kasa_host` in config / discover)
+        #[arg(long)]
+        host: Option<String>,
+        /// TP-Link account email (or env KASA_USERNAME) for KLAP plugs
+        #[arg(long, env = "KASA_USERNAME")]
+        username: Option<String>,
+        /// TP-Link account password (or env KASA_PASSWORD)
+        #[arg(long, env = "KASA_PASSWORD")]
+        password: Option<String>,
+        /// Leave the plug off after wake (default: restore ON)
+        #[arg(long)]
+        no_restore: bool,
+        /// Save `kasa_host` into config
+        #[arg(long)]
         save: bool,
     },
     /// Logistic-regression benchmark: recommend start/end for $/power vs stranding risk

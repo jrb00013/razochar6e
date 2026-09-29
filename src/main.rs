@@ -10,6 +10,7 @@ mod error;
 mod kasa;
 mod persist;
 mod probe;
+mod sleepcut;
 mod status;
 
 use backend::{best_backend, Thresholds};
@@ -94,6 +95,13 @@ fn run() -> RazResult<()> {
         } => cmd_cycle(
             action, host, start, end, interval, once, discover, username, password, save,
         )?,
+        Commands::Sleepcut {
+            host,
+            username,
+            password,
+            no_restore,
+            save,
+        } => cmd_sleepcut(host, username, password, no_restore, save)?,
         Commands::Benchmark {
             rate,
             capacity_wh,
@@ -183,6 +191,32 @@ fn cmd_cycle(
         })?,
     }
     Ok(())
+}
+
+fn cmd_sleepcut(
+    host: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+    no_restore: bool,
+    save: bool,
+) -> RazResult<()> {
+    let auth = kasa::KasaAuth::from_env_and_opts(username, password);
+    let cfg = config::load().unwrap_or_default();
+    let host = cycle::resolve_host(host, cfg.kasa_host.clone(), &auth)?;
+    if save {
+        let path = config::save(&config::AppConfig {
+            start: cfg.start,
+            end: cfg.end,
+            backend: cfg.backend.clone(),
+            kasa_host: Some(host.clone()),
+        })?;
+        println!("Saved kasa_host={host} to {}", path.display());
+    }
+    sleepcut::run(sleepcut::SleepcutOpts {
+        host,
+        auth,
+        restore_on_wake: !no_restore,
+    })
 }
 
 fn cmd_config(cmd: ConfigCommands) -> RazResult<()> {

@@ -74,13 +74,28 @@ stayed off while the pack kept draining. Current builds log
 ```bash
 razochar6e cycle on --host <ip>   # restore AC immediately if needed
 razochar6e cycle --host <ip>      # restart the loop
+```
 
 ## `cycle` stuck at 79% with outlet still ON
 
 Windows/ASUS often report **78–79%** forever when the firmware charge limit is 80%, so a
 strict `>= 80` cut never fires. Current builds cut when `pct >= end - 2` (e.g. **78%** for
 `--end 80`).
+
+## Runaway log under `%LOCALAPPDATA%\razochar6e-test\`
+
+A one-off Windows test harness (`.test-fixed-set-runner.ps1`) once did:
+
+```powershell
+Get-Content $log | Out-File -Append $log
 ```
+
+Reading a file while appending to the **same** path can grow without bound (hundreds of GB).
+That runner is deleted / gitignored. **Never** pipe a log into itself. Prefer `Set-Content`
+overwrite, or append only new lines you already hold in memory.
+
+If a `*.log` under `razochar6e-test` balloons again: stop any elevated PowerShell still
+writing it, then delete the file. The main `razochar6e` binary does not write that path.
 
 ## Kasa auth fails even with the correct password (EP10 / KLAP lv2)
 

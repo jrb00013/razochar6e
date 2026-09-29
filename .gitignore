@@ -1,4 +1,6 @@
 /target/
 **/*.rs.bk
 .razochar6e-build.lock
+.test-fixed-set-runner.ps1
+*.fixed-set-test.log
 
