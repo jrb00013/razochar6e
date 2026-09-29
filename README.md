@@ -64,9 +64,54 @@ Manual: [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md) · [docs/QUICKS
 | `install-persist` | systemd / Task Scheduler / launchd |
 | `completions bash\|fish\|zsh\|…` | Shell completions |
 | `wsl probe\|status\|set` | Control Windows host from WSL |
+| `cycle` | Smart-plug charge/drain loop (Kasa) |
+| `cycle on\|off\|state` | Manual Kasa outlet control |
+| `cycle --discover` | List Kasa plugs on the LAN |
+| `sleepcut` | Cut Kasa when *you* sleep Windows; restore on wake |
+| `benchmark` | Logistic model: recommend start/end for $/power vs stranding |
 
 ```bash
 razochar6e --help
+```
+
+### Kasa charge/drain cycle
+
+Firmware thresholds stop *charging* above your upper limit, but the pack won't *drain* while AC is present. With a Kasa plug on the charger:
+
+```bash
+pip install python-kasa          # needed for modern KLAP plugs (EP10, etc.)
+export KASA_USERNAME='you@example.com'   # same as Kasa app
+export KASA_PASSWORD='…'
+
+razochar6e cycle --discover
+razochar6e cycle --host 192.168.1.88 --save   # remember host in config
+razochar6e cycle --once                      # one poll+action
+razochar6e cycle                             # continuous loop (Ctrl+C to stop)
+```
+
+At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
+
+### Sleepcut (cut AC when *you* sleep)
+
+Does **not** auto-sleep the laptop. You sleep Windows as usual; a watcher cuts the Kasa outlet on suspend and turns it back on at resume:
+
+```bash
+export KASA_USERNAME='you@example.com'
+export KASA_PASSWORD='…'
+razochar6e sleepcut --host 192.168.1.88 --save
+# Ctrl+C to stop
+```
+
+Overnight sleep on battery naturally drops a few % of charge (e.g. high-70s → high-60s). That is the useful shallow rest — **better than a forced awake 79→69 cycle**, which burns ~0.1 full-cycle of pack life per pass for almost no bill savings (recharge heat waste) and only a tiny calendar-aging win vs just sitting under an 80% firmware limit.
+
+### Benchmark (optimal band)
+
+Fits a small **logistic regression** over synthetic usage samples and scores candidate `(start, end)` bands for P(acceptable day) vs projected $/yr:
+
+```bash
+razochar6e benchmark
+razochar6e benchmark --rate 0.18 --capacity-wh 90 --daily-wh 40 --hours-away 3
+razochar6e benchmark --apply    # write recommended start/end to config
 ```
 
 ## Config
@@ -77,8 +122,8 @@ razochar6e --help
 start = 20
 end = 80
 # backend = "linux_sysfs"   # optional force
+# kasa_host = "192.168.1.88"
 ```
-
 ```bash
 razochar6e config init
 razochar6e apply

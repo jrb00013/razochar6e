@@ -16,6 +16,9 @@ pub struct AppConfig {
     pub end: u8,
     #[serde(default)]
     pub backend: Option<String>,
+    /// Kasa smart-plug IP for `razochar6e cycle`
+    #[serde(default)]
+    pub kasa_host: Option<String>,
 }
 
 fn default_start() -> u8 {
@@ -32,6 +35,7 @@ impl Default for AppConfig {
             start: DEFAULT_START,
             end: DEFAULT_END,
             backend: None,
+            kasa_host: None,
         }
     }
 }
@@ -114,6 +118,7 @@ mod tests {
             start: 90,
             end: 80,
             backend: None,
+            kasa_host: None,
         };
         assert!(cfg.validate().is_err());
     }

@@ -48,3 +48,61 @@ Or install [deploy/99-razochar6e-charge.rules](../deploy/99-razochar6e-charge.ru
 ## `doctor` exits 1
 
 Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `razochar6e probe --json`.
+
+## Kasa `cycle` can't talk to the plug
+
+1. Confirm the laptop **charger** is plugged into the Kasa (not only the Kasa into the wall).
+2. `razochar6e cycle --discover` — your EP10/etc. should appear. Note the IP.
+3. Modern Kasa (KLAP, HTTP port 80) needs the same account as the Kasa app:
+
+   ```bash
+   pip install python-kasa
+   export KASA_USERNAME='you@example.com'
+   export KASA_PASSWORD='…'
+   razochar6e cycle state --host 192.168.x.x
+   ```
+
+4. From WSL, the plug must be reachable on the LAN (mirrored networking or host route). If discovery only works in Windows Python, pass `--host` explicitly from WSL.
+5. Legacy plugs (TCP 9999) need no credentials — if connect to `:9999` works, the built-in XOR client is used.
+
+## `cycle` stopped and never restored AC
+
+Older builds **exited the loop** if a single Windows WMI battery read failed, so the plug
+stayed off while the pack kept draining. Current builds log
+`cycle: transient error (will retry): …` and keep polling. Upgrade / rebuild, then:
+
+```bash
+razochar6e cycle on --host <ip>   # restore AC immediately if needed
+razochar6e cycle --host <ip>      # restart the loop
+```
+
+## `cycle` stuck at 79% with outlet still ON
+
+Windows/ASUS often report **78–79%** forever when the firmware charge limit is 80%, so a
+strict `>= 80` cut never fires. Current builds cut when `pct >= end - 2` (e.g. **78%** for
+`--end 80`).
+
+## Runaway log under `%LOCALAPPDATA%\razochar6e-test\`
+
+A one-off Windows test harness (`.test-fixed-set-runner.ps1`) once did:
+
+```powershell
+Get-Content $log | Out-File -Append $log
+```
+
+Reading a file while appending to the **same** path can grow without bound (hundreds of GB).
+That runner is deleted / gitignored. **Never** pipe a log into itself. Prefer `Set-Content`
+overwrite, or append only new lines you already hold in memory.
+
+If a `*.log` under `razochar6e-test` balloons again: stop any elevated PowerShell still
+writing it, then delete the file. The main `razochar6e` binary does not write that path.
+
+## Kasa auth fails even with the correct password (EP10 / KLAP lv2)
+
+Stock `python-kasa` `Discover` maps `IOT.SMARTPLUGSWITCH` + KLAP to **KlapTransport v1**
+hashes. EP10 firmware with `lv: 2` / `new_klap` needs **KlapTransportV2** hashes while
+still using the IoT protocol. `scripts/kasa_plug.py` forces that combo.
+
+Debug signature when the wrong transport is used:
+`Device response did not match our challenge` on handshake1, even though
+`owner` = MD5(email) matches your account.

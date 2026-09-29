@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- `razochar6e cycle` — charge/drain loop via TP-Link Kasa smart plug (cut AC at end %, restore at start %)
+- `razochar6e sleepcut` — cut Kasa on Windows suspend, restore on resume (no auto-sleep)
+- Native legacy Kasa XOR client (TCP 9999) plus `scripts/kasa_plug.py` for KLAP/modern firmware (python-kasa)
+- Config `kasa_host`; battery % from real Linux sysfs or Windows WMI (WSL-aware)
+- `razochar6e benchmark` — logistic regression over candidate charge bands; projected kWh/$ vs 100% float
+
+### Fixed
+
+- `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
+- Battery % read retries WMI up to 3 times before reporting failure
+- Cut AC at `end - 2` slack (e.g. 78% when `--end 80`) so ASUS/WMI stickiness still drains
+- Document / ignore the old `.test-fixed-set-runner.ps1` footgun (`Get-Content $log | Out-File -Append $log` → unbounded log growth)
+
 ## [0.2.6] - 2026-06-01
 
 ### Added

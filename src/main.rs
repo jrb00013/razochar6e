@@ -1,18 +1,24 @@
 mod backend;
+mod battery;
+mod benchmark;
 mod cli;
 mod completions;
 mod config;
+mod cycle;
 mod doctor;
 mod error;
+mod kasa;
 mod persist;
 mod probe;
+mod sleepcut;
 mod status;
 
 use backend::{best_backend, Thresholds};
 use clap::Parser;
-use cli::{Cli, Commands, ConfigCommands, WslCommands};
+use cli::{Cli, Commands, ConfigCommands, CycleAction, WslCommands};
 use error::RazResult;
 use probe::{print_probe_human, run_probe};
+use std::time::Duration;
 
 fn main() {
     if let Err(e) = run() {
@@ -50,10 +56,12 @@ fn run() -> RazResult<()> {
         } => {
             let t = Thresholds { start, end };
             if save {
+                let existing = config::load().unwrap_or_default();
                 let path = config::save(&config::AppConfig {
                     start,
                     end,
                     backend: backend.clone(),
+                    kasa_host: existing.kasa_host,
                 })?;
                 println!("Saved config to {}", path.display());
             }
@@ -73,8 +81,142 @@ fn run() -> RazResult<()> {
         Commands::UninstallPersist => persist::uninstall()?,
         Commands::Completions { shell } => completions::generate_for(shell)?,
         Commands::Wsl(cmd) => cmd_wsl(cmd)?,
+        Commands::Cycle {
+            action,
+            host,
+            start,
+            end,
+            interval,
+            once,
+            discover,
+            username,
+            password,
+            save,
+        } => cmd_cycle(
+            action, host, start, end, interval, once, discover, username, password, save,
+        )?,
+        Commands::Sleepcut {
+            host,
+            username,
+            password,
+            no_restore,
+            save,
+        } => cmd_sleepcut(host, username, password, no_restore, save)?,
+        Commands::Benchmark {
+            rate,
+            capacity_wh,
+            daily_wh,
+            hours_away,
+            samples,
+            apply,
+        } => {
+            let opts = benchmark::BenchmarkOpts {
+                rate_per_kwh: rate,
+                capacity_wh,
+                daily_wh,
+                hours_away,
+                samples,
+                apply,
+            };
+            let report = benchmark::run_benchmark(opts.clone())?;
+            benchmark::print_report(&report, &opts);
+        }
     }
     Ok(())
+}
+
+fn cmd_cycle(
+    action: Option<CycleAction>,
+    host: Option<String>,
+    start: u8,
+    end: u8,
+    interval: u64,
+    once: bool,
+    discover: bool,
+    username: Option<String>,
+    password: Option<String>,
+    save: bool,
+) -> RazResult<()> {
+    let auth = kasa::KasaAuth::from_env_and_opts(username, password);
+    let cfg = config::load().unwrap_or_default();
+
+    if discover {
+        let plugs = kasa::discover(&auth)?;
+        if plugs.is_empty() {
+            println!("No Kasa plugs discovered on the LAN.");
+            println!("Tip: pass --host IP, and for KLAP plugs set KASA_USERNAME / KASA_PASSWORD.");
+            return Ok(());
+        }
+        for p in plugs {
+            println!(
+                "{}  alias={:?} model={:?} on={:?}",
+                p.host, p.alias, p.model, p.is_on
+            );
+        }
+        return Ok(());
+    }
+
+    let host = cycle::resolve_host(host, cfg.kasa_host.clone(), &auth)?;
+
+    if save {
+        let path = config::save(&config::AppConfig {
+            start,
+            end,
+            backend: cfg.backend.clone(),
+            kasa_host: Some(host.clone()),
+        })?;
+        println!("Saved kasa_host={host} to {}", path.display());
+    }
+
+    match action {
+        Some(CycleAction::On) => {
+            kasa::set_on(&host, true, &auth)?;
+            println!("Plug {host} ON");
+        }
+        Some(CycleAction::Off) => {
+            kasa::set_on(&host, false, &auth)?;
+            println!("Plug {host} OFF");
+        }
+        Some(CycleAction::State) => {
+            let on = kasa::is_on(&host, &auth)?;
+            println!("{}", serde_json::json!({ "host": host, "is_on": on }));
+        }
+        None => cycle::run(cycle::CycleOpts {
+            host,
+            start,
+            end,
+            interval: Duration::from_secs(interval.max(1)),
+            once,
+            auth,
+        })?,
+    }
+    Ok(())
+}
+
+fn cmd_sleepcut(
+    host: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+    no_restore: bool,
+    save: bool,
+) -> RazResult<()> {
+    let auth = kasa::KasaAuth::from_env_and_opts(username, password);
+    let cfg = config::load().unwrap_or_default();
+    let host = cycle::resolve_host(host, cfg.kasa_host.clone(), &auth)?;
+    if save {
+        let path = config::save(&config::AppConfig {
+            start: cfg.start,
+            end: cfg.end,
+            backend: cfg.backend.clone(),
+            kasa_host: Some(host.clone()),
+        })?;
+        println!("Saved kasa_host={host} to {}", path.display());
+    }
+    sleepcut::run(sleepcut::SleepcutOpts {
+        host,
+        auth,
+        restore_on_wake: !no_restore,
+    })
 }
 
 fn cmd_config(cmd: ConfigCommands) -> RazResult<()> {
@@ -100,10 +242,12 @@ fn cmd_config(cmd: ConfigCommands) -> RazResult<()> {
             end,
             backend,
         } => {
+            let existing = config::load().unwrap_or_default();
             let path = config::save(&config::AppConfig {
                 start,
                 end,
                 backend,
+                kasa_host: existing.kasa_host,
             })?;
             println!("Updated {}", path.display());
         }
