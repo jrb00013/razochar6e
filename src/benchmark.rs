@@ -241,6 +241,7 @@ pub fn run_benchmark(opts: BenchmarkOpts) -> RazResult<BenchmarkReport> {
             end: recommended.end,
             backend: cfg.backend,
             kasa_host: cfg.kasa_host,
+            active_profile: cfg.active_profile,
         })?;
         println!(
             "Applied recommended band {}–{}% to {}",

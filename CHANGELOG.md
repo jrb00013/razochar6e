@@ -8,6 +8,7 @@ All notable changes to this project are documented in this file.
 
 - `razochar6e cycle` — charge/drain loop via TP-Link Kasa smart plug (cut AC at end %, restore at start %)
 - `razochar6e sleepcut` — cut Kasa on Windows suspend, restore on resume (no auto-sleep)
+- `razochar6e profile` — `remote` / `desk` / `away` power policies (Kasa + Windows plan + charge band)
 - Native legacy Kasa XOR client (TCP 9999) plus `scripts/kasa_plug.py` for KLAP/modern firmware (python-kasa)
 - Config `kasa_host`; battery % from real Linux sysfs or Windows WMI (WSL-aware)
 - `razochar6e benchmark` — logistic regression over candidate charge bands; projected kWh/$ vs 100% float
