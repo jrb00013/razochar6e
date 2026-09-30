@@ -70,10 +70,7 @@ pub fn run(opts: ProfileOpts) -> RazResult<()> {
             },
             cfg.backend.as_deref(),
         ) {
-            Ok(()) => println!(
-                "profile: charge band {}–{}% applied",
-                cfg.start, cfg.end
-            ),
+            Ok(()) => println!("profile: charge band {}–{}% applied", cfg.start, cfg.end),
             Err(e) => eprintln!("profile: charge thresholds skipped: {e}"),
         }
     }
@@ -99,7 +96,10 @@ pub fn show() -> RazResult<()> {
         "active_profile: {}",
         cfg.active_profile.as_deref().unwrap_or("(unset)")
     );
-    println!("kasa_host: {}", cfg.kasa_host.as_deref().unwrap_or("(unset)"));
+    println!(
+        "kasa_host: {}",
+        cfg.kasa_host.as_deref().unwrap_or("(unset)")
+    );
     println!("charge band: {}–{}%", cfg.start, cfg.end);
     println!();
     println!("Profiles:");
@@ -128,7 +128,10 @@ fn apply_away(cfg: &AppConfig, host: Option<&str>, auth: &KasaAuth) -> RazResult
     // Leave plug alone if already on — sleepcut handles OFF on suspend.
     if let Some(h) = host {
         match kasa::is_on(h, auth) {
-            Ok(on) => println!("profile/away: plug {h} currently {}", if on { "ON" } else { "OFF" }),
+            Ok(on) => println!(
+                "profile/away: plug {h} currently {}",
+                if on { "ON" } else { "OFF" }
+            ),
             Err(e) => eprintln!("profile/away: could not read plug: {e}"),
         }
     }
@@ -295,10 +298,7 @@ fn to_windows_path_if_wsl(path: &std::path::Path) -> RazResult<String> {
     if !out.status.success() {
         return Err(RazError::Backend {
             backend: "profile".into(),
-            message: format!(
-                "wslpath failed: {}",
-                String::from_utf8_lossy(&out.stderr)
-            ),
+            message: format!("wslpath failed: {}", String::from_utf8_lossy(&out.stderr)),
         });
     }
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
