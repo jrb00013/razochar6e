@@ -10,6 +10,7 @@ mod error;
 mod kasa;
 mod persist;
 mod probe;
+mod profile;
 mod sleepcut;
 mod status;
 
@@ -62,6 +63,7 @@ fn run() -> RazResult<()> {
                     end,
                     backend: backend.clone(),
                     kasa_host: existing.kasa_host,
+                    active_profile: existing.active_profile,
                 })?;
                 println!("Saved config to {}", path.display());
             }
@@ -102,6 +104,14 @@ fn run() -> RazResult<()> {
             no_restore,
             save,
         } => cmd_sleepcut(host, username, password, no_restore, save)?,
+        Commands::Profile {
+            name,
+            host,
+            username,
+            password,
+            no_thresholds,
+            no_save,
+        } => cmd_profile(name, host, username, password, no_thresholds, no_save)?,
         Commands::Benchmark {
             rate,
             capacity_wh,
@@ -164,6 +174,7 @@ fn cmd_cycle(
             end,
             backend: cfg.backend.clone(),
             kasa_host: Some(host.clone()),
+            active_profile: cfg.active_profile.clone(),
         })?;
         println!("Saved kasa_host={host} to {}", path.display());
     }
@@ -209,6 +220,7 @@ fn cmd_sleepcut(
             end: cfg.end,
             backend: cfg.backend.clone(),
             kasa_host: Some(host.clone()),
+            active_profile: cfg.active_profile.clone(),
         })?;
         println!("Saved kasa_host={host} to {}", path.display());
     }
@@ -216,6 +228,28 @@ fn cmd_sleepcut(
         host,
         auth,
         restore_on_wake: !no_restore,
+    })
+}
+
+fn cmd_profile(
+    name: String,
+    host: Option<String>,
+    username: Option<String>,
+    password: Option<String>,
+    no_thresholds: bool,
+    no_save: bool,
+) -> RazResult<()> {
+    if name.eq_ignore_ascii_case("show") {
+        return profile::show();
+    }
+    let auth = kasa::KasaAuth::from_env_and_opts(username, password);
+    let p = profile::Profile::parse(&name)?;
+    profile::run(profile::ProfileOpts {
+        profile: p,
+        host,
+        auth,
+        apply_thresholds: !no_thresholds,
+        save: !no_save,
     })
 }
 
@@ -248,6 +282,7 @@ fn cmd_config(cmd: ConfigCommands) -> RazResult<()> {
                 end,
                 backend,
                 kasa_host: existing.kasa_host,
+                active_profile: existing.active_profile,
             })?;
             println!("Updated {}", path.display());
         }

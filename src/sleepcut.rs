@@ -192,10 +192,7 @@ fn to_windows_path(unix_or_win: &std::path::Path) -> RazResult<String> {
     if !out.status.success() {
         return Err(RazError::Backend {
             backend: "sleepcut".into(),
-            message: format!(
-                "wslpath failed: {}",
-                String::from_utf8_lossy(&out.stderr)
-            ),
+            message: format!("wslpath failed: {}", String::from_utf8_lossy(&out.stderr)),
         });
     }
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())

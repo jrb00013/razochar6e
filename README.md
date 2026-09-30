@@ -68,6 +68,7 @@ Manual: [docs/QUICKSTART-WINDOWS.md](docs/QUICKSTART-WINDOWS.md) · [docs/QUICKS
 | `cycle on\|off\|state` | Manual Kasa outlet control |
 | `cycle --discover` | List Kasa plugs on the LAN |
 | `sleepcut` | Cut Kasa when *you* sleep Windows; restore on wake |
+| `profile` | Switch `remote` / `desk` / `away` power policy |
 | `benchmark` | Logistic model: recommend start/end for $/power vs stranding |
 
 ```bash
@@ -104,6 +105,23 @@ razochar6e sleepcut --host 192.168.1.88 --save
 
 Overnight sleep on battery naturally drops a few % of charge (e.g. high-70s → high-60s). That is the useful shallow rest — **better than a forced awake 79→69 cycle**, which burns ~0.1 full-cycle of pack life per pass for almost no bill savings (recharge heat waste) and only a tiny calendar-aging win vs just sitting under an 80% firmware limit.
 
+### Power profiles (remote / desk / away)
+
+One command sets Kasa + Windows power plan for how you're using the machine:
+
+```bash
+razochar6e profile show
+razochar6e profile remote   # 10h work-from-afar: plug ON, Silent/Balanced, AC sleep=Never, display 10m
+razochar6e profile desk     # local use: plug ON, Turbo/Performance when available
+razochar6e profile away     # leave: Silent; keep sleepcut running — sleep → Kasa OFF
+```
+
+| Profile | Kasa | Windows plan | Sleep on AC | Notes |
+|---------|------|--------------|-------------|--------|
+| **remote** | ON | Silent → Balanced | Never | No `cycle`; screen blanks at 10m |
+| **desk** | ON | Turbo → Performance | 30m | Armoury Ultimate still manual |
+| **away** | leave as-is | Silent → Balanced | (yours) | Run `sleepcut`; you sleep the PC |
+
 ### Benchmark (optimal band)
 
 Fits a small **logistic regression** over synthetic usage samples and scores candidate `(start, end)` bands for P(acceptable day) vs projected $/yr:
@@ -123,6 +141,7 @@ start = 20
 end = 80
 # backend = "linux_sysfs"   # optional force
 # kasa_host = "192.168.1.88"
+# active_profile = "away"   # remote | desk | away
 ```
 ```bash
 razochar6e config init

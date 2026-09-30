@@ -11,7 +11,8 @@ use clap::{CommandFactory, Parser, Subcommand};
                   Supports Linux sysfs, Windows ASUS/ROG, macOS SMC tools, and WSL→Windows bridge. \
                   Optional `cycle` drives a TP-Link Kasa smart plug to cut/restore AC for a full \
                   charge–drain band. `sleepcut` cuts the plug when *you* sleep Windows and \
-                  restores it on wake (no auto-sleep)."
+                  restores it on wake (no auto-sleep). `profile` switches remote/desk/away \
+                  power policies for the Kasa + Windows power plan."
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -118,6 +119,24 @@ pub enum Commands {
         /// Save `kasa_host` into config
         #[arg(long)]
         save: bool,
+    },
+    /// Switch power profile: remote (work from afar) | desk | away (sleep→Kasa off)
+    Profile {
+        /// Profile name, or `show` to print current + help
+        name: String,
+        /// Kasa plug IP (or `kasa_host` in config)
+        #[arg(long)]
+        host: Option<String>,
+        #[arg(long, env = "KASA_USERNAME")]
+        username: Option<String>,
+        #[arg(long, env = "KASA_PASSWORD")]
+        password: Option<String>,
+        /// Skip applying firmware charge start/end
+        #[arg(long)]
+        no_thresholds: bool,
+        /// Do not write active_profile to config
+        #[arg(long)]
+        no_save: bool,
     },
     /// Logistic-regression benchmark: recommend start/end for $/power vs stranding risk
     Benchmark {

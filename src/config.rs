@@ -16,9 +16,12 @@ pub struct AppConfig {
     pub end: u8,
     #[serde(default)]
     pub backend: Option<String>,
-    /// Kasa smart-plug IP for `razochar6e cycle`
+    /// Kasa smart-plug IP for `razochar6e cycle` / `sleepcut` / `profile`
     #[serde(default)]
     pub kasa_host: Option<String>,
+    /// Last applied power profile: remote | desk | away
+    #[serde(default)]
+    pub active_profile: Option<String>,
 }
 
 fn default_start() -> u8 {
@@ -36,6 +39,7 @@ impl Default for AppConfig {
             end: DEFAULT_END,
             backend: None,
             kasa_host: None,
+            active_profile: None,
         }
     }
 }
@@ -119,6 +123,7 @@ mod tests {
             end: 80,
             backend: None,
             kasa_host: None,
+            active_profile: None,
         };
         assert!(cfg.validate().is_err());
     }
