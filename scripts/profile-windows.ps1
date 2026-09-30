@@ -29,7 +29,7 @@ function Set-PreferredScheme([string[]]$names) {
             return
         }
     }
-    Write-Output ("scheme: none of [" + ($names -join ', ') + "] found — leaving current plan")
+    Write-Output ("scheme: none of [" + ($names -join ', ') + "] found - leaving current plan")
 }
 
 switch ($Profile) {
@@ -53,7 +53,7 @@ switch ($Profile) {
     'away' {
         Set-PreferredScheme @('Silent', 'Balanced')
         powercfg /change monitor-timeout-ac 5
-        Write-Output 'away: Silent/Balanced, display-off=5m (sleep when you sleep it → sleepcut cuts Kasa)'
+        Write-Output 'away: Silent/Balanced, display-off=5m (sleep when you sleep it -> sleepcut cuts Kasa)'
     }
 }
 
