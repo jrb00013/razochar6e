@@ -67,9 +67,13 @@ Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `
 
 ## `cycle` stopped and never restored AC
 
-Older builds **exited the loop** if a single Windows WMI battery read failed, so the plug
-stayed off while the pack kept draining. Current builds log
-`cycle: transient error (will retry): …` and keep polling. Upgrade / rebuild, then:
+Older builds **exited the loop** (or kept the outlet OFF) when Windows WMI battery reads
+failed, so the pack kept draining. Current builds:
+
+1. Log `cycle: transient error (will retry): …` and keep polling
+2. **Failsafe:** on battery-read failure, force the Kasa outlet **ON** (never strand on battery with AC cut)
+
+Upgrade / rebuild, then:
 
 ```bash
 razochar6e cycle on --host <ip>   # restore AC immediately if needed
