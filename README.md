@@ -92,6 +92,29 @@ razochar6e cycle                             # continuous loop (Ctrl+C to stop)
 
 At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
 
+### Autostart cycle on login (Windows / Linux / macOS)
+
+Install once; the 20–80% Kasa cycle starts at every login.
+
+**Windows** (Task Scheduler → WSL by default):
+
+```powershell
+.\scripts\install-cycle-autostart.ps1
+.\scripts\install-cycle-autostart.ps1 -StartNow    # also start immediately
+.\scripts\install-cycle-autostart.ps1 -Uninstall
+```
+
+Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600). Native Windows exe: `-Native -ExePath path\to\razochar6e.exe`.
+
+**Linux / macOS**:
+
+```bash
+./scripts/install-cycle-autostart.sh              # systemd --user (Linux) or LaunchAgent (macOS)
+./scripts/install-cycle-autostart.sh --uninstall
+```
+
+Same `kasa.env` under `~/.local/share/razochar6e/`. Runner: `scripts/cycle-daemon.sh`.
+
 ### Sleepcut (cut AC when *you* sleep)
 
 Does **not** auto-sleep the laptop. You sleep Windows as usual; a watcher cuts the Kasa outlet on suspend and turns it back on at resume:
