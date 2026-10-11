@@ -221,8 +221,27 @@ fn find_helper_script() -> RazResult<PathBuf> {
     })
 }
 
+fn is_wsl() -> bool {
+    std::env::var_os("WSL_DISTRO_NAME").is_some()
+        || std::fs::read_to_string("/proc/version")
+            .map(|v| v.to_lowercase().contains("microsoft"))
+            .unwrap_or(false)
+}
+
+fn trim_bin(s: &str) -> String {
+    s.trim().trim_end_matches('\r').to_string()
+}
+
+/// Prefer absolute interpreters. On WSL, Windows python.exe first — KLAP plugs
+/// are often only reachable via the Windows network stack (mirrored/NAT).
 fn python_bins() -> Vec<String> {
     let mut bins: Vec<String> = Vec::new();
+    if let Ok(p) = std::env::var("KASA_PYTHON") {
+        let p = trim_bin(&p);
+        if !p.is_empty() {
+            bins.push(p);
+        }
+    }
     #[cfg(windows)]
     {
         bins.push("python".into());
@@ -230,22 +249,15 @@ fn python_bins() -> Vec<String> {
     }
     #[cfg(not(windows))]
     {
-        let wsl = std::env::var_os("WSL_DISTRO_NAME").is_some()
-            || std::fs::read_to_string("/proc/version")
-                .map(|v| v.to_lowercase().contains("microsoft"))
-                .unwrap_or(false);
-        if wsl {
-            // Resolve Windows Python explicitly — bare `python.exe` is not always
-            // on PATH for non-interactive Command::new invocations.
+        if is_wsl() {
             if let Ok(out) = Command::new("which").arg("python.exe").output() {
                 if out.status.success() {
-                    let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    let p = trim_bin(&String::from_utf8_lossy(&out.stdout));
                     if !p.is_empty() {
                         bins.push(p);
                     }
                 }
             }
-            // Common install locations under the Windows user profile.
             if let Ok(entries) = std::fs::read_dir("/mnt/c/Users") {
                 for entry in entries.flatten() {
                     let base = entry.path().join("AppData/Local/Programs/Python");
@@ -259,13 +271,17 @@ fn python_bins() -> Vec<String> {
                     }
                 }
             }
-            bins.push("python.exe".into());
         }
-        // Project / user venv with python-kasa (Linux).
         if let Ok(home) = std::env::var("HOME") {
             let venv = format!("{home}/.local/share/razochar6e/venv/bin/python");
             if std::path::Path::new(&venv).exists() {
                 bins.push(venv);
+            }
+        }
+        // Absolute paths so a stripped PATH (Task Scheduler / nohup) still works.
+        for abs in ["/usr/bin/python3", "/usr/bin/python"] {
+            if std::path::Path::new(abs).exists() {
+                bins.push(abs.into());
             }
         }
         bins.push("python3".into());
@@ -274,25 +290,98 @@ fn python_bins() -> Vec<String> {
     bins
 }
 
+fn to_windows_path(path: &std::path::Path) -> Option<String> {
+    let out = Command::new("wslpath").arg("-w").arg(path).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = trim_bin(&String::from_utf8_lossy(&out.stdout));
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+fn ensure_windows_helper_copy(script: &std::path::Path) -> Option<PathBuf> {
+    // Stable path Windows Python can always open (avoids \\wsl$ flakes).
+    let mut candidates = Vec::new();
+    if let Ok(user) = std::env::var("USER") {
+        candidates.push(PathBuf::from(format!(
+            "/mnt/c/Users/{user}/AppData/Local/razochar6e/kasa_plug.py"
+        )));
+    }
+    if let Ok(entries) = std::fs::read_dir("/mnt/c/Users") {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            if name.eq_ignore_ascii_case("Public")
+                || name.eq_ignore_ascii_case("Default")
+                || name.starts_with('.')
+            {
+                continue;
+            }
+            candidates.push(
+                entry
+                    .path()
+                    .join("AppData/Local/razochar6e/kasa_plug.py"),
+            );
+        }
+    }
+    for dest in candidates {
+        if let Some(parent) = dest.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if std::fs::copy(script, &dest).is_ok() {
+            return Some(dest);
+        }
+    }
+    None
+}
+
 fn run_helper(args: &[&str], auth: &KasaAuth) -> RazResult<Value> {
     let script = find_helper_script()?;
-    let mut cmd_args: Vec<String> = vec![script.display().to_string()];
-    if let Some(u) = &auth.username {
-        cmd_args.push("--username".into());
-        cmd_args.push(u.clone());
-    }
-    if let Some(p) = &auth.password {
-        cmd_args.push("--password".into());
-        cmd_args.push(p.clone());
-    }
-    for a in args {
-        cmd_args.push((*a).to_string());
-    }
-
     let mut last_err = String::new();
+
     for bin in python_bins() {
-        let out = Command::new(&bin).args(&cmd_args).output();
-        let out = match out {
+        let is_win_py = bin.ends_with("python.exe")
+            || bin.ends_with("python.exe\r")
+            || bin == "python.exe"
+            || bin == "py"
+            || bin == "py.exe";
+
+        let script_arg = if is_win_py && is_wsl() {
+            ensure_windows_helper_copy(&script)
+                .and_then(|p| to_windows_path(&p))
+                .or_else(|| to_windows_path(&script))
+                .unwrap_or_else(|| script.display().to_string())
+        } else {
+            script.display().to_string()
+        };
+
+        let mut cmd_args: Vec<String> = vec![script_arg];
+        if let Some(u) = &auth.username {
+            cmd_args.push("--username".into());
+            cmd_args.push(u.clone());
+        }
+        if let Some(p) = &auth.password {
+            cmd_args.push("--password".into());
+            cmd_args.push(p.clone());
+        }
+        for a in args {
+            cmd_args.push((*a).to_string());
+        }
+
+        let mut cmd = Command::new(&bin);
+        cmd.args(&cmd_args);
+        // Windows children don't inherit WSL-exported vars unless we pass them.
+        if let Some(u) = &auth.username {
+            cmd.env("KASA_USERNAME", u);
+        }
+        if let Some(p) = &auth.password {
+            cmd.env("KASA_PASSWORD", p);
+        }
+
+        let out = match cmd.output() {
             Ok(o) => o,
             Err(e) => {
                 last_err = format!("{bin}: {e}");
@@ -316,8 +405,11 @@ fn run_helper(args: &[&str], auth: &KasaAuth) -> RazResult<Value> {
                 stderr.trim()
             }
         );
-        // If python ran but kasa auth failed, don't keep trying other bins.
-        if last_err.contains("Authentication") || last_err.contains("credentials") {
+        // Real auth rejection — don't keep hammering other interpreters.
+        // Do NOT match the generic "credentials are required" missing-arg message.
+        if last_err.contains("Authentication")
+            || last_err.contains("did not match our challenge")
+        {
             break;
         }
     }

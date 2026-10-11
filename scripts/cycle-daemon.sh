@@ -29,6 +29,23 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
+# Task Scheduler / nohup often strip PATH — keep absolute basics.
+export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+
+# On WSL, force Windows Python for KLAP (LAN reachable from Windows, not always from Linux).
+if [[ -z "${KASA_PYTHON:-}" ]]; then
+  if [[ -n "${WSL_DISTRO_NAME:-}" || -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; then
+    for cand in \
+      /mnt/c/Users/*/AppData/Local/Programs/Python/Python3*/python.exe \
+      "$(command -v python.exe 2>/dev/null || true)"; do
+      if [[ -n "$cand" && -x "$cand" ]]; then
+        export KASA_PYTHON="$cand"
+        break
+      fi
+    done
+  fi
+fi
+
 HOST="${KASA_HOST:-}"
 if [[ -z "$HOST" && -f "$CONFIG_DIR/config.toml" ]]; then
   HOST="$(grep -E '^\s*kasa_host\s*=' "$CONFIG_DIR/config.toml" | head -1 | sed -E 's/.*=\s*"?([^"]+)"?.*/\1/' || true)"
@@ -37,6 +54,12 @@ HOST="${HOST:-192.168.1.88}"
 START="${CYCLE_START:-20}"
 END="${CYCLE_END:-80}"
 INTERVAL="${CYCLE_INTERVAL:-60}"
+
+# Keep a Windows-side copy of the helper for python.exe
+if [[ -f "$ROOT/scripts/kasa_plug.py" ]]; then
+  mkdir -p /mnt/c/Users/"${USER:-josep}"/AppData/Local/razochar6e 2>/dev/null || true
+  cp -f "$ROOT/scripts/kasa_plug.py" /mnt/c/Users/"${USER:-josep}"/AppData/Local/razochar6e/kasa_plug.py 2>/dev/null || true
+fi
 
 if [[ -z "${KASA_USERNAME:-}" || -z "${KASA_PASSWORD:-}" ]]; then
   echo "error: set KASA_USERNAME and KASA_PASSWORD (or create $ENV_FILE)" >&2
