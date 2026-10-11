@@ -168,11 +168,16 @@ def main() -> int:
     for name, fn in (("state", cmd_state), ("on", cmd_on), ("off", cmd_off)):
         s = sub.add_parser(name)
         s.add_argument("--host", required=True)
-        s.add_argument("--username", default=None)
-        s.add_argument("--password", default=None)
+        # Do NOT re-declare --username/--password here: subparser defaults of
+        # None overwrite parent values (broke Windows python.exe helper auth).
         s.set_defaults(func=fn)
 
     args = p.parse_args()
+    # Also accept auth after the subcommand via env (Windows child procs).
+    if not getattr(args, "username", None):
+        args.username = os.environ.get("KASA_USERNAME")
+    if not getattr(args, "password", None):
+        args.password = os.environ.get("KASA_PASSWORD")
     try:
         return asyncio.run(args.func(args))
     except Exception as e:  # noqa: BLE001

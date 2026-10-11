@@ -20,6 +20,7 @@ All notable changes to this project are documented in this file.
 
 - `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
 - **Failsafe:** if battery % cannot be read, `cycle` forces the Kasa outlet **ON** so a WMI blip cannot leave the pack draining with AC cut
+- Kasa helper on WSL: prefer Windows `python.exe` + Windows script path (LAN often unreachable from Linux); fix argparse auth overwrite; pass `KASA_*` into the child; honor `KASA_PYTHON`
 - Battery % read retries WMI up to 3 times before reporting failure
 - Cut AC at `end - 2` slack (e.g. 78% when `--end 80`) so ASUS/WMI stickiness still drains
 - Document / ignore the old `.test-fixed-set-runner.ps1` footgun (`Get-Content $log | Out-File -Append $log` → unbounded log growth)
