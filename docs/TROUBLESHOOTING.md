@@ -62,7 +62,7 @@ Informational on unsupported hosts. Read printed `[warn]` / `[fail]` lines and `
    razochar6e cycle state --host 192.168.x.x
    ```
 
-4. **WSL often cannot reach the plug on LAN** even when Windows can (`Test-NetConnection 192.168.x.x -Port 80`). Current builds prefer Windows `python.exe` + a copy of `kasa_plug.py` under `%LOCALAPPDATA%\razochar6e\`. Override with `KASA_PYTHON=/mnt/c/Users/<you>/AppData/Local/Programs/Python/Python3xx/python.exe` if needed. Install `python-kasa` into that Windows Python (`py -3 -m pip install python-kasa`).
+4. **WSL often cannot reach the plug on LAN** even when Windows can (`Test-NetConnection 192.168.x.x -Port 80`). On WSL, builds prefer Windows `python.exe` + a copy of `kasa_plug.py` under `%LOCALAPPDATA%\razochar6e\`. Without WSL (native Windows / bare Linux), `python.exe` is still tried as a fallback after system Python. Override with `KASA_PYTHON=…` if needed. Install `python-kasa` into that interpreter (`py -3 -m pip install python-kasa` or `pip install python-kasa`).
 5. If `state` says auth is required but env vars are set: older helpers re-declared `--username` on the subparser and overwrote parent flags with `None`. Pull latest `scripts/kasa_plug.py`.
 6. Legacy plugs (TCP 9999) need no credentials — if connect to `:9999` works, the built-in XOR client is used.
 
