@@ -32,9 +32,15 @@ fi
 # Task Scheduler / nohup often strip PATH — keep absolute basics.
 export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
 
-# On WSL, force Windows Python for KLAP (LAN reachable from Windows, not always from Linux).
+# Python for KLAP helper:
+# - WSL: prefer Windows python.exe (LAN often only reachable from Windows).
+# - No WSL: fall back to python.exe if present, else system python3.
 if [[ -z "${KASA_PYTHON:-}" ]]; then
-  if [[ -n "${WSL_DISTRO_NAME:-}" || -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; then
+  is_wsl=0
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]] || { [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null; }; then
+    is_wsl=1
+  fi
+  if (( is_wsl )); then
     for cand in \
       /mnt/c/Users/*/AppData/Local/Programs/Python/Python3*/python.exe \
       "$(command -v python.exe 2>/dev/null || true)"; do
@@ -43,6 +49,8 @@ if [[ -z "${KASA_PYTHON:-}" ]]; then
         break
       fi
     done
+  elif command -v python.exe >/dev/null 2>&1; then
+    export KASA_PYTHON="$(command -v python.exe)"
   fi
 fi
 

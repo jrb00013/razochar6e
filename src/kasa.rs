@@ -232,60 +232,110 @@ fn trim_bin(s: &str) -> String {
     s.trim().trim_end_matches('\r').to_string()
 }
 
-/// Prefer absolute interpreters. On WSL, Windows python.exe first — KLAP plugs
-/// are often only reachable via the Windows network stack (mirrored/NAT).
+fn push_unique(bins: &mut Vec<String>, candidate: String) {
+    let c = trim_bin(&candidate);
+    if c.is_empty() || bins.iter().any(|b| b == &c) {
+        return;
+    }
+    bins.push(c);
+}
+
+/// Discover Windows Python installs under a Users tree (WSL `/mnt/c/Users` or native).
+fn push_windows_python_installs(bins: &mut Vec<String>, users_root: &std::path::Path) {
+    let Ok(entries) = std::fs::read_dir(users_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.eq_ignore_ascii_case("Public")
+            || name.eq_ignore_ascii_case("Default")
+            || name.eq_ignore_ascii_case("Default User")
+            || name.eq_ignore_ascii_case("All Users")
+            || name.starts_with('.')
+        {
+            continue;
+        }
+        let base = entry.path().join("AppData/Local/Programs/Python");
+        let Ok(pythons) = std::fs::read_dir(&base) else {
+            continue;
+        };
+        for py in pythons.flatten() {
+            let exe = py.path().join("python.exe");
+            if exe.exists() {
+                push_unique(bins, exe.to_string_lossy().into_owned());
+            }
+        }
+    }
+}
+
+fn push_python_exe_from_path(bins: &mut Vec<String>) {
+    if let Ok(out) = Command::new("which").arg("python.exe").output() {
+        if out.status.success() {
+            push_unique(bins, String::from_utf8_lossy(&out.stdout).into_owned());
+        }
+    }
+    // Last-resort name lookup (Windows PATH / WSL interop).
+    push_unique(bins, "python.exe".into());
+}
+
+/// Prefer absolute interpreters.
+/// - WSL: Windows `python.exe` first (KLAP often only reachable via Windows stack).
+/// - Native Windows / no WSL: `python.exe` as the primary fallback.
+/// - Native Linux: system Python first, then `python.exe` if present.
 fn python_bins() -> Vec<String> {
     let mut bins: Vec<String> = Vec::new();
     if let Ok(p) = std::env::var("KASA_PYTHON") {
-        let p = trim_bin(&p);
-        if !p.is_empty() {
-            bins.push(p);
-        }
+        push_unique(&mut bins, p);
     }
     #[cfg(windows)]
     {
-        bins.push("python".into());
-        bins.push("py".into());
+        if let Ok(local) = std::env::var("LOCALAPPDATA") {
+            let base = PathBuf::from(local).join("Programs").join("Python");
+            if let Ok(pythons) = std::fs::read_dir(&base) {
+                for py in pythons.flatten() {
+                    let exe = py.path().join("python.exe");
+                    if exe.exists() {
+                        push_unique(&mut bins, exe.to_string_lossy().into_owned());
+                    }
+                }
+            }
+        }
+        // Also scan sibling user profiles when LOCALAPPDATA is odd.
+        if let Ok(profile) = std::env::var("USERPROFILE") {
+            if let Some(users) = PathBuf::from(profile).parent() {
+                push_windows_python_installs(&mut bins, users);
+            }
+        }
+        push_unique(&mut bins, "python.exe".into());
+        push_unique(&mut bins, "py.exe".into());
+        push_unique(&mut bins, "py".into());
+        push_unique(&mut bins, "python".into());
     }
     #[cfg(not(windows))]
     {
         if is_wsl() {
-            if let Ok(out) = Command::new("which").arg("python.exe").output() {
-                if out.status.success() {
-                    let p = trim_bin(&String::from_utf8_lossy(&out.stdout));
-                    if !p.is_empty() {
-                        bins.push(p);
-                    }
-                }
-            }
-            if let Ok(entries) = std::fs::read_dir("/mnt/c/Users") {
-                for entry in entries.flatten() {
-                    let base = entry.path().join("AppData/Local/Programs/Python");
-                    if let Ok(pythons) = std::fs::read_dir(&base) {
-                        for py in pythons.flatten() {
-                            let exe = py.path().join("python.exe");
-                            if exe.exists() {
-                                bins.push(exe.to_string_lossy().into_owned());
-                            }
-                        }
-                    }
-                }
-            }
+            // WSL: Windows stack first for KLAP LAN reachability.
+            push_python_exe_from_path(&mut bins);
+            push_windows_python_installs(&mut bins, std::path::Path::new("/mnt/c/Users"));
         }
         if let Ok(home) = std::env::var("HOME") {
             let venv = format!("{home}/.local/share/razochar6e/venv/bin/python");
             if std::path::Path::new(&venv).exists() {
-                bins.push(venv);
+                push_unique(&mut bins, venv);
             }
         }
         // Absolute paths so a stripped PATH (Task Scheduler / nohup) still works.
         for abs in ["/usr/bin/python3", "/usr/bin/python"] {
             if std::path::Path::new(abs).exists() {
-                bins.push(abs.into());
+                push_unique(&mut bins, abs.into());
             }
         }
-        bins.push("python3".into());
-        bins.push("python".into());
+        push_unique(&mut bins, "python3".into());
+        push_unique(&mut bins, "python".into());
+        if !is_wsl() {
+            // No WSL: still try python.exe as a fallback (PATH / interop / dual-boot tooling).
+            push_python_exe_from_path(&mut bins);
+        }
     }
     bins
 }
