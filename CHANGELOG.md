@@ -20,6 +20,10 @@ All notable changes to this project are documented in this file.
 
 - `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
 - **Failsafe:** if battery % cannot be read, `cycle` forces the Kasa outlet **ON** so a WMI blip cannot leave the pack draining with AC cut
+- **Chatter:** the failsafe could force AC on at ~76% and the next tick re-cut it at ≥78%, flipping the plug every few seconds. AC cuts now wait `--min-dwell` (default 600 s) after any plug change, and the failsafe needs 3 consecutive battery-read failures
+- **Brownout:** cutting AC while the GPU is busy could drop power outright. `cycle` now defers the cut while GPU utilisation is ≥ `--max-load` (default 40%, `0` disables; skipped if `nvidia-smi` is unavailable)
+- `cycle` now appends cut/restore/defer/failure events to a persistent log (`<state dir>/razochar6e/cycle.log`) instead of relying on `/tmp`
+- `.gitignore` now excludes `kasa.env` / `*.env` so Kasa credentials cannot be committed
 - Kasa helper on WSL: prefer Windows `python.exe` + Windows script path (LAN often unreachable from Linux); fix argparse auth overwrite; pass `KASA_*` into the child; honor `KASA_PYTHON`
 - Kasa helper without WSL: use `python.exe` as fallback (native Windows installs + PATH); keep WSL Windows-Python preference
 - Battery % read retries WMI up to 3 times before reporting failure
