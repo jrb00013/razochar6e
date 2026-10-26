@@ -370,11 +370,7 @@ fn ensure_windows_helper_copy(script: &std::path::Path) -> Option<PathBuf> {
             {
                 continue;
             }
-            candidates.push(
-                entry
-                    .path()
-                    .join("AppData/Local/razochar6e/kasa_plug.py"),
-            );
+            candidates.push(entry.path().join("AppData/Local/razochar6e/kasa_plug.py"));
         }
     }
     for dest in candidates {
@@ -457,9 +453,7 @@ fn run_helper(args: &[&str], auth: &KasaAuth) -> RazResult<Value> {
         );
         // Real auth rejection — don't keep hammering other interpreters.
         // Do NOT match the generic "credentials are required" missing-arg message.
-        if last_err.contains("Authentication")
-            || last_err.contains("did not match our challenge")
-        {
+        if last_err.contains("Authentication") || last_err.contains("did not match our challenge") {
             break;
         }
     }
