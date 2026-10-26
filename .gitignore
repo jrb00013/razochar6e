@@ -1,4 +1,8 @@
 /target/
+# Kasa / TP-Link credentials — never commit
+kasa.env
+*.env
+.env*
 **/*.rs.bk
 .razochar6e-build.lock
 .test-fixed-set-runner.ps1

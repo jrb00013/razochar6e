@@ -86,6 +86,13 @@ pub enum Commands {
         /// Seconds between polls
         #[arg(long, global = true, default_value_t = 60)]
         interval: u64,
+        /// Minimum seconds after any plug change before AC may be cut again (stops chatter)
+        #[arg(long, global = true, default_value_t = crate::cycle::DEFAULT_MIN_DWELL_SECS)]
+        min_dwell: u64,
+        /// Defer cutting AC while GPU utilisation is at/above this percent (0 disables);
+        /// cutting AC under load can brown out the laptop
+        #[arg(long, global = true, default_value_t = crate::cycle::DEFAULT_MAX_LOAD_PCT)]
+        max_load: u8,
         /// Run a single poll+action then exit
         #[arg(long, global = true)]
         once: bool,
