@@ -111,9 +111,8 @@ fn synthetic_dataset(
         let mid = (f64::from(start) + f64::from(end)) / 2.0;
         let aging_penalty = ((mid - 55.0) / 40.0).clamp(0.0, 1.0);
         let enough = usable >= need_jitter * 1.05;
-        let y = if enough && aging_penalty < 0.85 {
-            1.0
-        } else if enough && next_f64(&mut rng) > aging_penalty {
+        // Short-circuit order matches the old else-if chain, so RNG draws are unchanged.
+        let y = if enough && (aging_penalty < 0.85 || next_f64(&mut rng) > aging_penalty) {
             1.0
         } else {
             0.0

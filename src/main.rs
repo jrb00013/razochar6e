@@ -138,6 +138,7 @@ fn run() -> RazResult<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cmd_cycle(
     action: Option<CycleAction>,
     host: Option<String>,
