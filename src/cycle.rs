@@ -86,8 +86,44 @@ pub struct CycleOpts {
     pub auth: KasaAuth,
 }
 
-/// Highest GPU utilisation across NVIDIA GPUs; `None` if nvidia-smi is unavailable.
+/// Parse GPU utilisation text: the highest integer line, clamped to 100.
+/// Windows counters can sum above 100 across processes.
+pub fn parse_load(text: &str) -> Option<u8> {
+    text.lines()
+        .filter_map(|l| l.trim().parse::<u32>().ok())
+        .max()
+        .map(|v| v.min(100) as u8)
+}
+
+/// GPU utilisation: `nvidia-smi` first, then the Windows 3D-engine counter.
+///
+/// `nvidia-smi` often cannot initialise NVML inside WSL, which would leave the load
+/// gate silently disabled; the Windows counter works from WSL via powershell.exe.
 fn gpu_load_pct() -> Option<u8> {
+    nvidia_smi_load_pct().or_else(windows_gpu_load_pct)
+}
+
+fn windows_gpu_load_pct() -> Option<u8> {
+    let ps = if cfg!(windows) {
+        "powershell"
+    } else {
+        "powershell.exe"
+    };
+    let script = r#"$ErrorActionPreference='Stop'
+$s = (Get-Counter '\GPU Engine(*engtype_3D)\Utilization Percentage').CounterSamples | Measure-Object CookedValue -Sum
+[math]::Round($s.Sum)"#;
+    let out = std::process::Command::new(ps)
+        .args(["-NoProfile", "-Command", script])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    parse_load(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// Highest GPU utilisation across NVIDIA GPUs; `None` if nvidia-smi is unavailable.
+fn nvidia_smi_load_pct() -> Option<u8> {
     ["nvidia-smi", "nvidia-smi.exe"].iter().find_map(|bin| {
         let out = std::process::Command::new(bin)
             .args([
@@ -99,10 +135,7 @@ fn gpu_load_pct() -> Option<u8> {
         if !out.status.success() {
             return None;
         }
-        String::from_utf8_lossy(&out.stdout)
-            .lines()
-            .filter_map(|l| l.trim().parse::<u8>().ok())
-            .max()
+        parse_load(&String::from_utf8_lossy(&out.stdout))
     })
 }
 
@@ -379,6 +412,14 @@ mod tests {
     fn load_gate_disabled_or_unreadable_allows_cut() {
         assert_eq!(gate_cut(None, DWELL, Some(100), 0), Ok(()));
         assert_eq!(gate_cut(None, DWELL, None, 40), Ok(()));
+    }
+
+    #[test]
+    fn parse_load_takes_max_and_clamps() {
+        assert_eq!(parse_load("12\n87\n"), Some(87));
+        assert_eq!(parse_load("104\n"), Some(100));
+        assert_eq!(parse_load("Failed to initialize NVML: N/A\n"), None);
+        assert_eq!(parse_load(""), None);
     }
 
     #[test]
