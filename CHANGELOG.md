@@ -9,7 +9,7 @@ All notable changes to this project are documented in this file.
 - `razochar6e cycle` — charge/drain loop via TP-Link Kasa smart plug (cut AC at end %, restore at start %)
 - `razochar6e sleepcut` — cut Kasa on Windows suspend, restore on resume (no auto-sleep)
 - `razochar6e profile` — `remote` / `desk` / `away` power policies (Kasa + Windows plan + charge band)
-- `scripts/install-cycle-autostart.ps1` — Windows logon Task Scheduler for 20–80% Kasa cycle (WSL or `-Native`)
+- `scripts/install-cycle-autostart.ps1` — Windows **system service** (WinSW, Automatic Delayed Start) for the 20–80% Kasa cycle (WSL or `-Native`)
 - `scripts/install-cycle-autostart.sh` — Linux `systemd --user` / macOS LaunchAgent for the same cycle
 - `scripts/cycle-daemon.sh` — shared cycle runner (creds from `~/.local/share/razochar6e/kasa.env`)
 - Native legacy Kasa XOR client (TCP 9999) plus `scripts/kasa_plug.py` for KLAP/modern firmware (python-kasa)
@@ -18,6 +18,8 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- `cycle-daemon.sh` stays in the **foreground by default** so a Windows service / `wsl.exe` supervisor keeps the cycle alive (nohup child was dying when the parent `wsl.exe` exited); `--background` opts into the old nohup path
+- Non-interactive WSL PATH now includes Windows `powershell.exe` so battery % reads work when started from the service
 - `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)
 - **Failsafe:** if battery % cannot be read, `cycle` forces the Kasa outlet **ON** so a WMI blip cannot leave the pack draining with AC cut
 - **Chatter:** the failsafe could force AC on at ~76% and the next tick re-cut it at ≥78%, flipping the plug every few seconds. AC cuts now wait `--min-dwell` (default 600 s) after any plug change, and the failsafe needs 3 consecutive battery-read failures

@@ -30,7 +30,11 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 # Task Scheduler / nohup often strip PATH — keep absolute basics.
-export PATH="/usr/local/bin:/usr/bin:/bin:${PATH:-}"
+# Non-interactive WSL does not get appendWindowsPath, so powershell.exe
+# (battery %) is missing unless we add it here.
+WIN_PS="/mnt/c/Windows/System32/WindowsPowerShell/v1.0"
+WIN_SYS="/mnt/c/Windows/System32"
+export PATH="/usr/local/bin:/usr/bin:/bin:${WIN_PS}:${WIN_SYS}:${PATH:-}"
 
 # Python for KLAP helper:
 # - WSL: prefer Windows python.exe (LAN often only reachable from Windows).
@@ -90,11 +94,15 @@ fi
 
 echo "$(date -Iseconds 2>/dev/null || date) cycle start host=$HOST band=${START}-${END}% interval=${INTERVAL}s bin=$BIN" >>"$LOG"
 
-if [[ "${1:-}" == "--foreground" ]]; then
-  exec "$BIN" cycle --host "$HOST" --start "$START" --end "$END" --interval "$INTERVAL" >>"$LOG" 2>&1
+# Stay in the foreground. The logon task runs this under wsl.exe; a nohup
+# child dies when that wsl.exe exits, so the cycle never stays up.
+if [[ "${1:-}" == "--background" ]]; then
+  nohup "$BIN" cycle --host "$HOST" --start "$START" --end "$END" --interval "$INTERVAL" \
+    >>"$LOG" 2>&1 &
+  echo "$(date -Iseconds 2>/dev/null || date) cycle pid=$! log=$LOG" >>"$LOG"
+  echo "cycle started pid=$! log=$LOG"
+  exit 0
 fi
 
-nohup "$BIN" cycle --host "$HOST" --start "$START" --end "$END" --interval "$INTERVAL" \
-  >>"$LOG" 2>&1 &
-echo "$(date -Iseconds 2>/dev/null || date) cycle pid=$! log=$LOG" >>"$LOG"
-echo "cycle started pid=$! log=$LOG"
+echo "$(date -Iseconds 2>/dev/null || date) cycle foreground log=$LOG" >>"$LOG"
+exec "$BIN" cycle --host "$HOST" --start "$START" --end "$END" --interval "$INTERVAL" >>"$LOG" 2>&1

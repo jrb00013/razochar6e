@@ -92,19 +92,19 @@ razochar6e cycle                             # continuous loop (Ctrl+C to stop)
 
 At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
 
-### Autostart cycle on login (Windows / Linux / macOS)
+### Autostart cycle (Windows service / Linux / macOS)
 
-Install once; the 20–80% Kasa cycle starts at every login.
+Install once; the 20–80% Kasa cycle stays up across reboots.
 
-**Windows** (Task Scheduler → WSL by default):
+**Windows** (system service, Automatic Delayed Start → WSL by default; needs Admin / UAC):
 
 ```powershell
-.\scripts\install-cycle-autostart.ps1
-.\scripts\install-cycle-autostart.ps1 -StartNow    # also start immediately
+.\scripts\install-cycle-autostart.ps1              # install + start now
 .\scripts\install-cycle-autostart.ps1 -Uninstall
+Get-Service razochar6e-cycle                      # Status should be Running
 ```
 
-Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600). Native Windows exe: `-Native -ExePath path\to\razochar6e.exe`.
+Service files live under `%ProgramData%\razochar6e\` (WinSW wrapper). Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600). Native Windows exe with `cycle`: `-Native -ExePath path\to\razochar6e.exe`.
 
 **Linux / macOS**:
 
@@ -113,7 +113,7 @@ Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600). Native Windows
 ./scripts/install-cycle-autostart.sh --uninstall
 ```
 
-Same `kasa.env` under `~/.local/share/razochar6e/`. Runner: `scripts/cycle-daemon.sh`.
+Same `kasa.env` under `~/.local/share/razochar6e/`. Runner: `scripts/cycle-daemon.sh` (foreground by default so service supervisors keep it alive).
 
 ### Sleepcut (cut AC when *you* sleep)
 
