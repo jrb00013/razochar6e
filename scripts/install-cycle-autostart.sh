@@ -126,7 +126,8 @@ Wants=network-online.target
 Type=simple
 Environment=RAZOCHAR6E_KASA_ENV=$ENV_FILE
 Environment=RAZOCHAR6E_BIN=$ROOT/target/release/razochar6e
-ExecStart=$DAEMON_DST --foreground
+# cycle-daemon.sh stays in the foreground by default (use --background only for ad-hoc nohup).
+ExecStart=$DAEMON_DST
 Restart=on-failure
 RestartSec=15
 
@@ -155,7 +156,6 @@ install_macos() {
   <array>
     <string>/bin/bash</string>
     <string>${DAEMON_DST}</string>
-    <string>--foreground</string>
   </array>
   <key>EnvironmentVariables</key>
   <dict>
