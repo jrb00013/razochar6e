@@ -103,8 +103,8 @@ pub fn show() -> RazResult<()> {
     println!("charge band: {}–{}%", cfg.start, cfg.end);
     println!();
     println!("Profiles:");
-    println!("  remote — work from afar: Kasa ON, Silent/Balanced, AC sleep=Never, display 10m");
-    println!("  desk   — local use: Kasa ON, Turbo/Performance when available");
+    println!("  remote — work from afar: Kasa ON, Silent/Balanced, AC+DC sleep=Never, display 10m");
+    println!("  desk   — local use: Kasa ON, Turbo/Performance, AC+DC sleep=2h");
     println!("  away   — leave: Silent; run sleepcut so sleep → Kasa OFF");
     Ok(())
 }
