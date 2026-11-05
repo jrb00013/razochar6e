@@ -134,15 +134,15 @@ One command sets Kasa + Windows power plan for how you're using the machine:
 
 ```bash
 razochar6e profile show
-razochar6e profile remote   # 10h work-from-afar: plug ON, Silent/Balanced, AC sleep=Never, display 10m
-razochar6e profile desk     # local use: plug ON, Turbo/Performance when available
+razochar6e profile remote   # 10h work-from-afar: plug ON, Silent/Balanced, AC+DC sleep=Never, display 10m
+razochar6e profile desk     # local use: plug ON, Turbo/Performance, sleep after 2h
 razochar6e profile away     # leave: Silent; keep sleepcut running — sleep → Kasa OFF
 ```
 
-| Profile | Kasa | Windows plan | Sleep on AC | Notes |
+| Profile | Kasa | Windows plan | Sleep AC/DC | Notes |
 |---------|------|--------------|-------------|--------|
-| **remote** | ON | Silent → Balanced | Never | No `cycle`; screen blanks at 10m |
-| **desk** | ON | Turbo → Performance | 30m | Armoury Ultimate still manual |
+| **remote** | ON | Silent → Balanced | Never / Never | No `cycle`; screen blanks at 10m |
+| **desk** | ON | Turbo → Performance | 2h / 2h | Matches AC+DC so 20–80 `cycle` drain doesn’t nap early |
 | **away** | leave as-is | Silent → Balanced | (yours) | Run `sleepcut`; you sleep the PC |
 
 ### Benchmark (optimal band)

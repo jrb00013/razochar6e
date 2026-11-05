@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- `profile desk` sets **AC and DC sleep = 2h** (was 30m AC only). The 20–80% Kasa cycle cuts wall power, so a short DC sleep timer would nap the laptop mid-drain; `remote` keeps AC+DC sleep = Never
 - `cycle-daemon.sh` stays in the **foreground by default** so a Windows service / `wsl.exe` supervisor keeps the cycle alive (nohup child was dying when the parent `wsl.exe` exited); `--background` opts into the old nohup path
 - Non-interactive WSL PATH now includes Windows `powershell.exe` so battery % reads work when started from the service
 - `cycle` no longer exits the loop on transient battery/WMI or plug errors (retries next interval)

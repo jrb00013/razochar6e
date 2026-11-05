@@ -34,21 +34,31 @@ function Set-PreferredScheme([string[]]$names) {
 
 switch ($Profile) {
     'remote' {
-        # Quiet + reachable: never sleep on AC; screen can blank.
+        # Quiet + reachable. Never sleep on AC *or* DC — remoting on battery
+        # (or a blip off AC) must not nap the box after 30 minutes.
         Set-PreferredScheme @('Silent', 'Balanced')
         powercfg /change standby-timeout-ac 0
+        powercfg /change standby-timeout-dc 0
         powercfg /change monitor-timeout-ac 10
-        powercfg /change hibernate-timeout-ac 0
-        powercfg /change standby-timeout-dc 30
         powercfg /change monitor-timeout-dc 5
-        Write-Output 'remote: AC sleep=Never, display-off=10m, DC sleep=30m'
+        powercfg /change hibernate-timeout-ac 0
+        powercfg /change hibernate-timeout-dc 0
+        Write-Output 'remote: AC+DC sleep=Never, display-off=10m AC / 5m DC'
     }
     'desk' {
+        # Desk / 20–80 Kasa cycle: cutting AC puts the laptop on DC, so AC and
+        # DC sleep must match — otherwise the box naps mid-drain on battery.
         Set-PreferredScheme @('Turbo', 'Performance')
-        powercfg /change standby-timeout-ac 30
-        powercfg /change monitor-timeout-ac 15
+        powercfg /change standby-timeout-ac 120
+        powercfg /change standby-timeout-dc 120
         powercfg /change hibernate-timeout-ac 0
-        Write-Output 'desk: Turbo/Performance, AC sleep=30m, display-off=15m'
+        powercfg /change hibernate-timeout-dc 0
+        powercfg /change monitor-timeout-ac 15
+        powercfg /change monitor-timeout-dc 15
+        powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_SLEEP HYBRIDSLEEP 0 2>$null
+        powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_SLEEP HYBRIDSLEEP 0 2>$null
+        powercfg /SETACTIVE SCHEME_CURRENT | Out-Null
+        Write-Output 'desk: Turbo/Performance, AC+DC sleep=2h, display-off=15m'
     }
     'away' {
         Set-PreferredScheme @('Silent', 'Balanced')
