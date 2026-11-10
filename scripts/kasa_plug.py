@@ -155,6 +155,31 @@ async def cmd_off(args: argparse.Namespace) -> int:
     return 0
 
 
+async def cmd_timer(args: argparse.Namespace) -> int:
+    """Arm (or clear) an on-device countdown that turns the plug OFF.
+
+    The rule lives on the plug itself, so it fires even if this PC is asleep.
+    Re-arming replaces any existing rule, so calling it every poll just pushes
+    the deadline out while the PC is awake and healthy.
+    """
+    dev = await _connect(args.host, args)
+    await dev._query_helper("count_down", "delete_all_rules")
+    if args.minutes > 0:
+        await dev._query_helper(
+            "count_down",
+            "add_rule",
+            {
+                "enable": 1,
+                "delay": int(args.minutes * 60),
+                "act": 0,
+                "name": "razochar6e-failsafe",
+            },
+        )
+    rules = await dev._query_helper("count_down", "get_rules")
+    print(json.dumps({"host": args.host, "rules": rules.get("rule_list", [])}))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--username", default=None)
@@ -171,6 +196,11 @@ def main() -> int:
         # Do NOT re-declare --username/--password here: subparser defaults of
         # None overwrite parent values (broke Windows python.exe helper auth).
         s.set_defaults(func=fn)
+
+    t = sub.add_parser("timer")
+    t.add_argument("--host", required=True)
+    t.add_argument("--minutes", type=float, default=0.0, help="0 clears the timer")
+    t.set_defaults(func=cmd_timer)
 
     args = p.parse_args()
     # Also accept auth after the subcommand via env (Windows child procs).

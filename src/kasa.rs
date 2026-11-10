@@ -604,6 +604,14 @@ pub fn set_on(host: &str, on: bool, auth: &KasaAuth) -> RazResult<()> {
     })
 }
 
+/// Arm (minutes > 0) or clear (minutes == 0) an on-device countdown that turns
+/// the plug OFF. The rule lives on the plug, so it fires even while this host
+/// is asleep and cannot poll. Best-effort: one attempt, no retry storm.
+pub fn set_failsafe_timer(host: &str, minutes: u32, auth: &KasaAuth) -> RazResult<()> {
+    let m = minutes.to_string();
+    run_helper(&["timer", "--host", host, "--minutes", &m], auth).map(|_| ())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
