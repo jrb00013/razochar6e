@@ -15,6 +15,37 @@ pub const DEFAULT_MAX_LOAD_PCT: u8 = 40;
 /// single WMI blip cannot flip the plug.
 const FAILSAFE_AFTER_FAILURES: u32 = 3;
 
+/// Worst-case charge rate (percent per minute) used to size the plug-side
+/// failsafe timer. Real rate is ~1.9%/min; this is deliberately pessimistic so
+/// the timer is never long enough to overshoot `end` by much.
+const WORST_CASE_CHARGE_PCT_PER_MIN: f64 = 2.5;
+
+/// Minutes the plug should stay on before turning itself OFF if this host stops
+/// polling (e.g. it went to sleep). Just long enough to reach `end`, with a
+/// small margin; refreshed on every awake poll.
+pub fn failsafe_minutes(pct: u8, end: u8) -> u32 {
+    let remaining = f64::from(end.saturating_sub(pct));
+    let mins = (remaining / WORST_CASE_CHARGE_PCT_PER_MIN).ceil() as u32 + 3;
+    mins.clamp(5, 45)
+}
+
+/// Best-effort: never fail a tick because the failsafe timer could not be set.
+fn arm_failsafe(opts: &CycleOpts, pct: u8) {
+    let mins = failsafe_minutes(pct, opts.end);
+    match kasa::set_failsafe_timer(&opts.host, mins, &opts.auth) {
+        Ok(()) => log_event(&format!(
+            "failsafe timer armed {mins}m (plug self-cuts if host sleeps)"
+        )),
+        Err(e) => log_event(&format!("failsafe timer NOT armed: {e}")),
+    }
+}
+
+fn clear_failsafe(opts: &CycleOpts) {
+    if let Err(e) = kasa::set_failsafe_timer(&opts.host, 0, &opts.auth) {
+        log_event(&format!("failsafe timer clear failed: {e}"));
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     TurnOn,
@@ -223,6 +254,7 @@ fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
             kasa::set_on(&opts.host, true, &opts.auth)?;
             state.last_change = Some(Instant::now());
             log_event(&format!("restore AC pct={pct} (blind)"));
+            arm_failsafe(opts, pct);
             return Ok(());
         }
         Err(e) => return Err(e),
@@ -250,6 +282,7 @@ fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
                     kasa::set_on(&opts.host, false, &opts.auth)?;
                     state.last_change = Some(Instant::now());
                     log_event(&format!("cut AC pct={pct} load={load:?}"));
+                    clear_failsafe(opts);
                 }
                 Err(why) => {
                     let reason = match why {
@@ -258,6 +291,7 @@ fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
                     };
                     println!("{pct}% at/above cut but deferring AC cut: {reason}");
                     log_event(&format!("defer cut pct={pct} reason={reason}"));
+                    arm_failsafe(opts, pct);
                 }
             }
         }
@@ -267,12 +301,16 @@ fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
             kasa::set_on(&opts.host, true, &opts.auth)?;
             state.last_change = Some(Instant::now());
             log_event(&format!("restore AC pct={pct}"));
+            arm_failsafe(opts, pct);
         }
         Action::Hold => {
             println!(
                 "{pct}% in band, outlet={} → hold",
                 if on { "ON" } else { "OFF" }
             );
+            if on {
+                arm_failsafe(opts, pct);
+            }
         }
     }
     let _ = io::stdout().flush();
@@ -379,6 +417,16 @@ pub fn run(opts: CycleOpts) -> RazResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn failsafe_minutes_scales_with_remaining_charge() {
+        assert_eq!(failsafe_minutes(20, 80), 27); // 60/2.5=24 +3
+        assert_eq!(failsafe_minutes(70, 80), 7);
+        assert_eq!(failsafe_minutes(79, 80), 5); // floor
+        assert_eq!(failsafe_minutes(90, 80), 5); // past end: floor, no underflow
+        assert_eq!(failsafe_minutes(0, 100), 43);
+        assert!(failsafe_minutes(0, 255) <= 45); // ceiling
+    }
 
     #[test]
     fn cuts_at_end_when_on() {
