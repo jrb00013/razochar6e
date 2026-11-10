@@ -533,7 +533,7 @@ fn xor_set_relay(host: &str, on: bool) -> RazResult<()> {
     Ok(())
 }
 
-pub fn is_on(host: &str, auth: &KasaAuth) -> RazResult<bool> {
+fn is_on_once(host: &str, auth: &KasaAuth) -> RazResult<bool> {
     match xor_relay_state(host) {
         Ok(on) => Ok(on),
         Err(_) => {
@@ -548,7 +548,7 @@ pub fn is_on(host: &str, auth: &KasaAuth) -> RazResult<bool> {
     }
 }
 
-pub fn set_on(host: &str, on: bool, auth: &KasaAuth) -> RazResult<()> {
+fn set_on_once(host: &str, on: bool, auth: &KasaAuth) -> RazResult<()> {
     if xor_set_relay(host, on).is_ok() {
         return Ok(());
     }
@@ -562,6 +562,46 @@ pub fn set_on(host: &str, on: bool, auth: &KasaAuth) -> RazResult<()> {
         });
     }
     Ok(())
+}
+
+/// Backoff between plug-call attempts. Right after resume the NIC / WSL interop
+/// can take tens of seconds to come back, so wait long enough to ride that out.
+const RETRY_DELAYS_SECS: [u64; 4] = [2, 5, 10, 20];
+
+fn with_retries<T>(what: &str, mut f: impl FnMut() -> RazResult<T>) -> RazResult<T> {
+    let mut last = None;
+    for (i, d) in std::iter::once(0).chain(RETRY_DELAYS_SECS).enumerate() {
+        if d > 0 {
+            std::thread::sleep(Duration::from_secs(d));
+        }
+        match f() {
+            Ok(v) => return Ok(v),
+            Err(e) => {
+                eprintln!("kasa: {what} attempt {} failed: {e}", i + 1);
+                last = Some(e);
+            }
+        }
+    }
+    Err(last.expect("at least one attempt"))
+}
+
+/// Read relay state, retrying transient failures.
+pub fn is_on(host: &str, auth: &KasaAuth) -> RazResult<bool> {
+    with_retries("read state", || is_on_once(host, auth))
+}
+
+/// Set relay state with retries, then read it back to confirm (ack handling).
+pub fn set_on(host: &str, on: bool, auth: &KasaAuth) -> RazResult<()> {
+    with_retries("set state", || {
+        set_on_once(host, on, auth)?;
+        match is_on_once(host, auth) {
+            Ok(got) if got != on => Err(RazError::Backend {
+                backend: "kasa".into(),
+                message: format!("plug acked but state is {got}, wanted {on}"),
+            }),
+            _ => Ok(()),
+        }
+    })
 }
 
 #[cfg(test)]
