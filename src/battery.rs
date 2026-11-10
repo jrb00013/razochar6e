@@ -7,7 +7,7 @@ use std::time::Duration;
 
 /// Best-effort battery charge percentage for the cycle loop.
 pub fn battery_percent() -> RazResult<u8> {
-    battery_percent_with_retries(3, Duration::from_millis(400))
+    battery_percent_with_retries(5, Duration::from_secs(3))
 }
 
 fn battery_percent_with_retries(attempts: u32, delay: Duration) -> RazResult<u8> {

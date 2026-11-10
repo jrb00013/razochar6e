@@ -73,6 +73,7 @@ pub fn failsafe_due(consecutive_failures: u32) -> bool {
 struct CycleState {
     last_change: Option<Instant>,
     battery_failures: u32,
+    last_tick: Option<Instant>,
 }
 
 pub struct CycleOpts {
@@ -196,9 +197,40 @@ pub fn resolve_host(
 }
 
 fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
+    // A gap far longer than the poll interval means the host slept (or we were
+    // starved). Record it: the battery may have drained past `start` meanwhile.
+    if let Some(prev) = state.last_tick {
+        let gap = prev.elapsed();
+        if gap > opts.interval * 3 {
+            log_event(&format!(
+                "poll gap {}s (interval {}s): suspected sleep/wake",
+                gap.as_secs(),
+                opts.interval.as_secs()
+            ));
+        }
+    }
+    state.last_tick = Some(Instant::now());
     let pct = battery::battery_percent()?;
     state.battery_failures = 0;
-    let on = kasa::is_on(&opts.host, &opts.auth)?;
+    let on = match kasa::is_on(&opts.host, &opts.auth) {
+        Ok(on) => on,
+        Err(e) if pct <= opts.start => {
+            // Level-triggered: battery is low, so assert ON even if we cannot read
+            // the plug. Setting ON is idempotent and the safe direction.
+            log_event(&format!(
+                "pct={pct} plug state unreadable ({e}); forcing ON"
+            ));
+            kasa::set_on(&opts.host, true, &opts.auth)?;
+            state.last_change = Some(Instant::now());
+            log_event(&format!("restore AC pct={pct} (blind)"));
+            return Ok(());
+        }
+        Err(e) => return Err(e),
+    };
+    log_event(&format!(
+        "poll pct={pct} plug={}",
+        if on { "ON" } else { "OFF" }
+    ));
     let action = decide(pct, opts.start, opts.end, on);
     match action {
         Action::TurnOff => {
@@ -231,6 +263,7 @@ fn tick(opts: &CycleOpts, state: &mut CycleState) -> RazResult<()> {
         }
         Action::TurnOn => {
             println!("{pct}% ≤ {}% and outlet OFF → restoring AC", opts.start);
+            log_event(&format!("restoring AC pct={pct}"));
             kasa::set_on(&opts.host, true, &opts.auth)?;
             state.last_change = Some(Instant::now());
             log_event(&format!("restore AC pct={pct}"));
@@ -310,6 +343,7 @@ pub fn run(opts: CycleOpts) -> RazResult<()> {
                 // Never abort the long-running loop on transient WMI / plug errors —
                 // that previously left the laptop discharging with no restore.
                 eprintln!("cycle: transient error (will retry): {e}");
+                log_event(&format!("tick error: {e}"));
                 let _ = io::stderr().flush();
                 // Critical: unknown battery % must not strand us on battery with AC cut.
                 if is_battery_error(&e) {
