@@ -9,7 +9,7 @@ All notable changes to this project are documented in this file.
 - `razochar6e cycle` — charge/drain loop via TP-Link Kasa smart plug (cut AC at end %, restore at start %)
 - `razochar6e sleepcut` — cut Kasa on Windows suspend, restore on resume (no auto-sleep)
 - `razochar6e profile` — `remote` / `desk` / `away` power policies (Kasa + Windows plan + charge band)
-- `scripts/install-cycle-autostart.ps1` — Windows **system service** (WinSW, Automatic Delayed Start) for the 20–80% Kasa cycle (WSL or `-Native`)
+- `scripts/install-cycle-autostart.ps1` — Windows auto-start for the 20–80% Kasa cycle: WSL mode is a boot + logon + 5-min-watchdog **Scheduled Task** run as the installing user (S4U); `-Native` is a WinSW service
 - `scripts/install-cycle-autostart.sh` — Linux `systemd --user` / macOS LaunchAgent for the same cycle
 - `scripts/cycle-daemon.sh` — shared cycle runner (creds from `~/.local/share/razochar6e/kasa.env`)
 - Native legacy Kasa XOR client (TCP 9999) plus `scripts/kasa_plug.py` for KLAP/modern firmware (python-kasa)
@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Windows autostart now starts at **boot** (not only logon) and self-heals: after a Windows Update restart the cycle used to stay down until login, the Kasa failsafe cut AC, and the battery drained to 2%. The WSL install no longer uses a SYSTEM WinSW service (LocalSystem cannot see a per-user WSL distro); a 5-minute watchdog relaunches the cycle if WSL / the daemon dies
 - `profile desk` sets **AC and DC sleep = 2h** (was 30m AC only). The 20–80% Kasa cycle cuts wall power, so a short DC sleep timer would nap the laptop mid-drain; `remote` keeps AC+DC sleep = Never
 - `cycle-daemon.sh` stays in the **foreground by default** so a Windows service / `wsl.exe` supervisor keeps the cycle alive (nohup child was dying when the parent `wsl.exe` exited); `--background` opts into the old nohup path
 - Non-interactive WSL PATH now includes Windows `powershell.exe` so battery % reads work when started from the service
