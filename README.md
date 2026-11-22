@@ -92,19 +92,21 @@ razochar6e cycle                             # continuous loop (Ctrl+C to stop)
 
 At ≥ `end`% the outlet turns **off**; at ≤ `start`% it turns **on**. Legacy TCP-9999 plugs need no credentials; KLAP plugs need the env vars above.
 
-### Autostart cycle (Windows service / Linux / macOS)
+### Autostart cycle (Windows boot task / Linux / macOS)
 
 Install once; the 20–80% Kasa cycle stays up across reboots.
 
-**Windows** (system service, Automatic Delayed Start → WSL by default; needs Admin / UAC):
+**Windows** (starts at **boot**, before login; needs Admin / UAC):
 
 ```powershell
 .\scripts\install-cycle-autostart.ps1              # install + start now
 .\scripts\install-cycle-autostart.ps1 -Uninstall
-Get-Service razochar6e-cycle                      # Status should be Running
+Get-ScheduledTask razochar6e-cycle                 # State should be Running (WSL mode)
 ```
 
-Service files live under `%ProgramData%\razochar6e\` (WinSW wrapper). Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600). Native Windows exe with `cycle`: `-Native -ExePath path\to\razochar6e.exe`.
+WSL mode (default) installs a **Scheduled Task** that runs `wsl.exe` → `cycle-daemon.sh` as *you* (S4U, no password stored) with three triggers: at boot, at logon, and a 5-minute watchdog that relaunches the cycle if WSL or the daemon died (no-op while it is alive). It is deliberately not a SYSTEM service: WSL distros are per-user, so `wsl.exe` as LocalSystem cannot see your distro. Edit WSL creds: `~/.local/share/razochar6e/kasa.env` (chmod 600).
+
+Native Windows exe with `cycle`: `-Native -ExePath path\to\razochar6e.exe` installs a WinSW service (`%ProgramData%\razochar6e\`, Automatic Delayed Start, `Get-Service razochar6e-cycle`).
 
 **Linux / macOS**:
 

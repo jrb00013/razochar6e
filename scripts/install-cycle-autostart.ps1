@@ -1,10 +1,16 @@
-# Install (or remove) a Windows *system service* that auto-starts the
-# razochar6e 20–80% Kasa charge/drain cycle at boot.
+# Install (or remove) the Windows auto-start for the razochar6e 20–80% Kasa
+# charge/drain cycle. It starts at BOOT (no login needed) and stays up.
 #
-# Default: WinSW service → wsl.exe → cycle-daemon.sh (ROG + WSL setup).
-# Native:  -Native if you have a Windows build of razochar6e.exe with `cycle`.
+# Default (WSL): a Scheduled Task running wsl.exe → cycle-daemon.sh as the
+#   installing user (S4U — no password stored). Triggers: at boot, at logon, and
+#   a 5-minute watchdog (IgnoreNew, so it is a no-op while the cycle is alive and
+#   relaunches it if WSL / the daemon died). It is NOT a SYSTEM service on
+#   purpose: WSL distros are registered per user, so wsl.exe running as
+#   LocalSystem cannot see your distro.
+# Native:  -Native if you have a Windows build of razochar6e.exe with `cycle`;
+#   installed as a WinSW service (Automatic Delayed Start, runs as SYSTEM).
 #
-# Requires Administrator (service create/start). UAC prompt if not elevated.
+# Requires Administrator (task/service create). UAC prompt if not elevated.
 #
 # Usage (PowerShell):
 #   .\scripts\install-cycle-autostart.ps1
@@ -16,7 +22,8 @@ param(
     [string]$Distro = 'Ubuntu',
     [string]$WslHome = '/home/josep',
     [string]$ServiceName = 'razochar6e-cycle',
-    [string]$TaskName = 'razochar6e-cycle', # legacy logon task; removed on install
+    [string]$TaskName = 'razochar6e-cycle', # WSL-mode scheduled task (also replaces the old logon-only task)
+    [string]$User = "$env:USERDOMAIN\$env:USERNAME", # account the WSL task runs as
     [int]$Start = 20,
     [int]$End = 80,
     [int]$Interval = 60,
@@ -70,13 +77,13 @@ function Get-WinSWPaths {
     }
 }
 
-function Stop-LegacyTask {
+function Remove-CycleTask {
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
 }
 
 function Uninstall-CycleService {
     $paths = Get-WinSWPaths
-    Stop-LegacyTask
+    Remove-CycleTask
     if (Test-Path $paths.Exe) {
         try { & $paths.Exe stop | Out-Null } catch {}
         try { & $paths.Exe uninstall | Out-Null } catch {}
@@ -87,7 +94,7 @@ function Uninstall-CycleService {
         Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
         sc.exe delete $ServiceName | Out-Null
     }
-    Write-Host "Removed Windows service: $ServiceName"
+    Write-Host "Removed Windows service/task: $ServiceName"
 }
 
 if ($Uninstall) {
@@ -108,7 +115,7 @@ if (-not (Test-IsAdmin) -and -not $NoElevate) {
         '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $self,
         '-Distro', $Distro, '-WslHome', $WslHome, '-ServiceName', $ServiceName,
         '-Start', "$Start", '-End', "$End", '-Interval', "$Interval",
-        '-HostIp', $HostIp, '-WinSWUrl', $WinSWUrl, '-NoElevate'
+        '-HostIp', $HostIp, '-WinSWUrl', $WinSWUrl, '-User', $User, '-NoElevate'
     )
     if ($Native) { $pass += '-Native' }
     if ($ExePath) { $pass += @('-ExePath', $ExePath) }
@@ -124,7 +131,7 @@ New-Item -ItemType Directory -Force -Path $paths.Dir | Out-Null
 New-Item -ItemType Directory -Force -Path $paths.LogDir | Out-Null
 
 # Replace any prior logon-task install
-Stop-LegacyTask
+Remove-CycleTask
 Uninstall-CycleService
 
 $executable = ''
@@ -184,6 +191,29 @@ Get-Content `$envFile | ForEach-Object {
     $argDisplay = "wsl $arguments"
     Write-Host "WSL env file (edit if needed): $wslEnv"
     Write-Host "WSL daemon: $wslScript"
+}
+
+if (-not $Native) {
+    # WSL mode: boot + logon + watchdog scheduled task as the installing user.
+    $action = New-ScheduledTaskAction -Execute $executable -Argument $arguments
+    $triggers = @(
+        (New-ScheduledTaskTrigger -AtStartup),
+        (New-ScheduledTaskTrigger -AtLogOn -User $User),
+        (New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 5))
+    )
+    $principal = New-ScheduledTaskPrincipal -UserId $User -LogonType S4U -RunLevel Limited
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew `
+        -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -Hidden
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $triggers `
+        -Principal $principal -Settings $settings -Force | Out-Null
+    Write-Host "Installed scheduled task: $TaskName (boot + logon + 5-min watchdog, runs as $User)"
+    Write-Host "  runs: $argDisplay"
+    Write-Host "Starting task..."
+    Start-ScheduledTask -TaskName $TaskName
+    Start-Sleep -Seconds 3
+    Get-ScheduledTask -TaskName $TaskName | Select-Object TaskName, State | Format-Table -AutoSize
+    exit 0
 }
 
 # Fetch WinSW once into ProgramData (service-aware wrapper)
